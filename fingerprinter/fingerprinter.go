@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -39,7 +39,7 @@ type fingerprinter struct {
 
 func NewFingerprinter(hashFilepath string) (*fingerprinter, error) {
 	// load hashes from file
-	bytes, err := ioutil.ReadFile(hashFilepath)
+	bytes, err := os.ReadFile(hashFilepath)
 	if err != nil {
 		return nil, err
 	}
