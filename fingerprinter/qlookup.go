@@ -131,18 +131,11 @@ tagloop:
 }
 
 func GetTagCounts(hashes map[string]structs.Filehash) tagscount {
-
-	// TODO: get all tags on parse or rather, dump them with script.sh
-	// e.g. on top
-	// tags := getTags(hashes)
-
 	filecounts := hashesToCounts(hashes)
-
 	return filesToTagsCount(filecounts)
 }
 
 func filesToTagsCount(filecounts map[string]filecount) tagscount {
-
 	tcounts := tagscount{}
 
 	// file - dashicons.css
@@ -211,22 +204,4 @@ func hashesToCounts(hashes map[string]structs.Filehash) map[string]filecount {
 	}
 
 	return filecounts
-}
-
-func getTags(hashes map[string]structs.Filehash) []string {
-	uniqueTags := []string{}
-
-	// key = filepath
-	for _, hashmap := range hashes {
-
-		// key = hashes for file
-		for _, tags := range hashmap {
-
-			for _, tag := range tags { // TODO: reduce load.. replace this with loading tags on parse
-				uniqueTags = append(uniqueTags, tag)
-			}
-		}
-	}
-
-	return uniqueTags
 }

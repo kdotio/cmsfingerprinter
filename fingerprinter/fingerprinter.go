@@ -258,8 +258,6 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 	// Currently (4) possible versions: [5.4.4 5.4.3 5.4.2 5.4.1]
 	// testcase should be 5.4.4, ultimately
 
-	// TODO: rather weird that so few
-
 	sum := summary{
 		requiredMatches: 1, // might require more than one hash match for finalization
 	}
