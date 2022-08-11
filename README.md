@@ -54,7 +54,7 @@ whereas non-readable files, e.g. `.php` were changed.
 * phpBB `2.0 - 3.3.5`
 * phpMyAdmin `2.2 - 5.1.1`
 * PrestaShop `1.5 - 1.7.8.1`
-* Shopware `1.0.2 - 5.7.6`, `6.4.6 - 6.4.7`
+* Shopware `1.0.2 - 5.7.6`
 * TYPO3 `3.6 - 11.5.2`
 * Umbraco `4.9 - 9.1.2`
 * WooCommerce `1.0 - 5.9` // note deployment path, i.e. /wp-content/plugins/woocommerce in -target
