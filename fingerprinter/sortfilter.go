@@ -145,5 +145,9 @@ func isLikelyAccessible(file string) bool {
 		return true
 	}
 
+	if strings.Contains(file, "language/") { // joomla
+		return true
+	}
+
 	return false
 }

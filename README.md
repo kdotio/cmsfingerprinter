@@ -40,7 +40,7 @@ whereas non-readable files, e.g. `.php` were changed.
 * Contao `3.2.12 - 4.5.10`
 * Drupal `1.0 - 9.2.8`
 * GravCMS `0.1 - 1.7.25`
-* Joomla! `1.7.3 - 13.1`
+* Joomla! `1.7.3 - 4.1.5`
 * Laravel `3.2 - 8.6.7` // rather wide-ranging
 * Magento1 Open Source `1.1.1 - 1.9.4.5`
 * Magento2 Community Edition `2.0 - 2.4.3`
