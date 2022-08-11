@@ -2,8 +2,12 @@ package helpers
 
 import (
 	"log"
+	"net"
+	"net/url"
+	"os"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -137,4 +141,28 @@ func SortRevsAlphabeticallyDesc(elems []string) []string {
 	})
 
 	return elems
+}
+
+func IsHostUnavailable(err error) bool {
+	urlErr, ok := err.(*url.Error)
+	if !ok {
+		return false
+	}
+
+	opErr, ok := urlErr.Unwrap().(*net.OpError)
+	if !ok {
+		return false
+	}
+
+	if _, ok := opErr.Unwrap().(*net.DNSError); ok {
+		return true
+	}
+
+	if syscallErr, ok := opErr.Unwrap().(*os.SyscallError); ok {
+		if syscallErr.Err == syscall.ECONNRESET {
+			return true
+		}
+	}
+
+	return false
 }

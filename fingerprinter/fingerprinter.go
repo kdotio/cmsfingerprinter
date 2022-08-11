@@ -324,6 +324,10 @@ func (f *fingerprinter) analyze(ctx context.Context, target, file string, client
 	if err != nil {
 		log.Println(err)
 
+		if helpers.IsHostUnavailable(err) {
+			return "", sum, fmt.Errorf("target unreachable: %s", err)
+		}
+
 		// if no versions were identified positively yet
 		// use next file in pre-sorted list
 		if len(sum.possibleVersions) == 0 {
