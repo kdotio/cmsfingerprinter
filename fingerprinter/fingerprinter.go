@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
@@ -80,146 +79,9 @@ func NewFingerprinter(hashFilepath string) (*fingerprinter, error) {
 		preferFilesInRoot: true,
 	}
 
-	fp.sortFilesByAccessLikelyhood() // TODO: initial sort should prefer files that are part of the latest release
+	fp.k = sortFilesByAccessLikelyhood(fp.h, fp.preferFilesInRoot) // TODO: initial sort should prefer files that are part of the latest release
 
 	return fp, nil
-}
-
-func includeOnly(fhashes map[string]structs.Filehash, includeMatcher []string) map[string]structs.Filehash {
-	if fhashes == nil {
-		return map[string]structs.Filehash{}
-	}
-
-	// include all
-	if len(includeMatcher) == 0 {
-		return fhashes
-	}
-
-	// each file tested must contain at least ONE of the matchers
-hashesLoop:
-	for k := range fhashes {
-
-		for _, matcher := range includeMatcher {
-			if strings.Contains(k, matcher) {
-				continue hashesLoop
-			}
-		}
-
-		delete(fhashes, k)
-	}
-
-	return fhashes
-}
-
-func excludeForbiddenFiles(fhashes map[string]structs.Filehash, forbiddenFileMatcher []string) map[string]structs.Filehash {
-	if fhashes == nil {
-		return map[string]structs.Filehash{}
-	}
-
-	for _, matcher := range forbiddenFileMatcher {
-		for k := range fhashes {
-			if strings.Contains(k, matcher) {
-				delete(fhashes, k)
-			}
-		}
-	}
-
-	return fhashes
-}
-
-func (f *fingerprinter) sortFilesByHashAmounts() {
-	// get file keys in alphabetical order to always run in same order
-	mk := make([]string, len(f.h))
-	i := 0
-	for k := range f.h {
-		mk[i] = k
-		i++
-	}
-
-	// when requesting randomly, first try those files with many hashes
-	// to get the biggest bang for the buck when requesting random files
-	sort.Slice(mk,
-		func(i, j int) bool {
-			return len(f.h[mk[i]]) > len(f.h[mk[j]])
-		},
-	)
-
-	f.k = mk
-}
-
-func (f *fingerprinter) sortFilesByAccessLikelyhood() {
-	// get file keys in alphabetical order to always run in same order
-	mk := make([]string, len(f.h))
-	i := 0
-	for k := range f.h {
-		mk[i] = k
-		i++
-	}
-
-	// when requesting randomly, first try those files with many hashes
-	// to get the biggest bang for the buck when requesting random files
-	sort.Slice(mk,
-		func(i, j int) bool {
-
-			// should prefer files that contain the most recent version
-			// otherwise, as in TYPO3, older files that are 404 in new versions will be requested
-			// sysext/rtehtmlarea/htmlarea/htmlarea.js
-			// typo3/sysext/css_styled_content/static/setup.txt
-			// without allow further limiting
-			// this order will be obsolete anyhow after the first initial succesful hit
-
-			// e.g. Drupal
-			// robots.txt is always the most likely available, so sort to top
-			if f.preferFilesInRoot {
-
-				if strings.Count(mk[i], "/") == 0 && strings.Count(mk[j], "/") == 0 {
-					return len(f.h[mk[i]]) > len(f.h[mk[j]])
-				}
-
-				if strings.Count(mk[i], "/") == 0 {
-					return true
-				}
-
-				if strings.Count(mk[j], "/") == 0 {
-					return false
-				}
-			}
-
-			// if the amount of hashes is equal, sort by preference indicators
-			// e.g. prefer /wp-includes over /wp-admin
-			if len(f.h[mk[i]]) == len(f.h[mk[j]]) {
-
-				// if both files are likely accessible, sort alphabetically
-				if isLikelyAccessible(mk[i]) == isLikelyAccessible(mk[j]) {
-
-					// just sort alphabetically for consistent tries across requests
-					return mk[i] > mk[j]
-				}
-
-				// if one is more accessible than the other, prefer
-				if isLikelyAccessible(mk[i]) {
-					return true
-				}
-				if isLikelyAccessible(mk[j]) {
-					return false
-				}
-			}
-
-			return len(f.h[mk[i]]) > len(f.h[mk[j]])
-		},
-	)
-
-	f.k = mk
-}
-
-// TODO: allow custom sorts, currently this is for WordPress only
-func isLikelyAccessible(file string) bool {
-	if strings.Contains(file, "wp-includes") ||
-		strings.Contains(file, "wp-content") {
-		return true
-	}
-
-	return false
 }
 
 type summary struct {
