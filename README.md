@@ -7,7 +7,7 @@ Depending on the website this process may be as quick as requesting a single fil
 
 The tool can be used for pentesting purposes to show that mere hiding of obvious version indicators, security by obscurity, is not enough to be safe.
 
-## Usage
+# Usage
 
 ```
 go run . -target https://example.com -cms wordpress
@@ -22,7 +22,7 @@ e.g. if no version is found in the `<meta name="generator" content="WordPress">`
 
 The tool can also be used to fingerprint the specific semantic version (`major.minor.patch`), if only a major version is easily visible.
 
-#### Filehashes
+## Filehashes
 
 The filehashes were generated using openly available GitHub repos as well as pre-packaged archives.
 
@@ -34,7 +34,7 @@ If there is no public repo available, all files of each release had to be hashed
 In any case, results may be inconclusive because the publicly readable files, e.g. `.html, .js, .css` might've not changed for some time
 whereas non-readable files, e.g. `.php` were changed.
 
-##### Supported so far
+# Supported so far
 * BoltCMS `0.8.4 - 3.7.4.1`
 * Concrete CMS `5.7 - 9`
 * Contao `3.2.12 - 4.5.10`
