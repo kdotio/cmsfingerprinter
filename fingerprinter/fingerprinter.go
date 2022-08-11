@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"cms-fingerprinter/fingerprinter/hashlookup"
 	"cms-fingerprinter/helpers"
 	"cms-fingerprinter/structs"
 )
@@ -30,7 +31,7 @@ type fingerprinter struct {
 	h                map[string]structs.Filehash // all files hashes
 	k                []string                    // file paths in alphabetical order
 	tcounts          tagscount                   // used for quick lookup of next-to-be http get
-	ftHashes         map[string]filetags
+	hashLookup       hashlookup.HashLookup
 	requestHash      httpHashRequester
 	httpRequestDelay time.Duration
 
@@ -72,7 +73,7 @@ func NewFingerprinter(hashFilepath string) (*fingerprinter, error) {
 	fp := &fingerprinter{
 		h:                hashes,
 		tcounts:          GetTagCounts(hashes),
-		ftHashes:         hashesToTagHashes(hashes),
+		hashLookup:       hashlookup.New(hashes),
 		requestHash:      defaultHttpHasher(),
 		httpRequestDelay: defaultRequestDelay,
 
@@ -458,7 +459,7 @@ func (f *fingerprinter) guessNextRequest(ctx context.Context, possibleVersions [
 		}
 
 		// skip running file get, if no versions can be truncated by running the hash
-		allFilesShareHash, err := f.doTagsShareHash(nextRequest, possibleVersions)
+		allFilesShareHash, err := f.hashLookup.DoTagsShareHash(nextRequest, possibleVersions)
 		if err != nil {
 			log.Println("ERROR:", err)
 		}
@@ -475,51 +476,4 @@ func (f *fingerprinter) guessNextRequest(ctx context.Context, possibleVersions [
 	}
 
 	return nextRequest, requestedFiles
-}
-
-func (f *fingerprinter) doTagsShareHash(file string, tags []string) (bool, error) {
-	if len(tags) == 1 {
-		log.Println("only one tag left:", tags[0])
-		return false, nil
-	}
-
-	filehashes, ok := f.ftHashes[file]
-	if !ok {
-		return false, fmt.Errorf("ERROR: no entry for file: %s", file)
-	}
-
-	//		"readme.html": {
-	//			"4.1.32": "0027d921c041fc9d082d52b025c94e5f",
-	//			"4.1.31": "0027d921c041fc9d082d52b025c94e5f",
-	//			"3.4": "01189c4abc9f8845de357ab736598039",
-
-	foundhashes := map[string]struct{}{}
-
-	for _, tag := range tags {
-		hash, ok := filehashes[tag]
-		if !ok {
-
-			// this means the file does not exist in the specified revision
-			// log.Println("ERROR: no hash for tag", tag, file)
-			continue
-		}
-
-		foundhashes[hash] = struct{}{}
-	}
-
-	if len(foundhashes) == 0 {
-		log.Println("found zero hashes:", tags)
-		return false, errors.New("no hashes found")
-	}
-
-	if len(foundhashes) == 1 {
-		//for k := range foundhashes {
-		//	log.Printf("all remaining tags (%s) share one hash: %s (%s)\n", tags, k, file)
-		return true, nil
-		//}
-	}
-
-	// log.Println("found more than one hash", foundhashes)
-
-	return false, nil
 }

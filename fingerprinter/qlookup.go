@@ -8,36 +8,6 @@ import (
 	"cms-fingerprinter/structs"
 )
 
-type filetags map[string]string
-
-func hashesToTagHashes(hashes map[string]structs.Filehash) map[string]filetags {
-	filemap := map[string]filetags{}
-
-	for file, hashmap := range hashes {
-
-		// for one single file
-		ftag := filetags{}
-
-		// key = "0027d921c041fc9d082d52b025c94e5f"
-		// tags = ["2.0.7", "2.0.6"]
-		for hash, tags := range hashmap {
-
-			for _, tag := range tags {
-				// per tag, add hash as entry to map
-				if _, ok := ftag[tag]; ok {
-					log.Println("ERROR: entry already exists for tag:", tag, hash, file)
-				}
-
-				ftag[tag] = hash
-			}
-		}
-
-		filemap[file] = ftag
-	}
-
-	return filemap
-}
-
 type filecount map[string]int
 
 type uniqueness struct {
