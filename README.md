@@ -36,30 +36,30 @@ whereas non-readable files, e.g. `.php` were changed.
 
 # Supported so far
 * BoltCMS `0.8.4 - 3.7.4.1`
-* Concrete CMS `5.7 - 9`
+* Concrete CMS `5.7 - 9.0.1`
 * Contao `3.2.12 - 4.5.10`
-* Drupal `1 - 9.2.8`
+* Drupal `1.0 - 9.2.8`
 * GravCMS `0.1 - 1.7.25`
 * Joomla! `1.7.3 - 13.1`
 * Laravel `3.2 - 8.6.7` // rather wide-ranging
 * Magento1 Open Source `1.1.1 - 1.9.4.5`
-* Magento2 Community Edition `2 - 2.4.3`
+* Magento2 Community Edition `2.0 - 2.4.3`
 * Nextcloud `1.1 - 22.2.3`
-* nopCommerce `2 - 4.40.4`
-* OctoberCMS `1 - 2.1.20`
-* OpenCart `1.5.5.1 - 3`
-* OpenMageLTS `1.1.1 - 20`
+* nopCommerce `2.0 - 4.40.4`
+* OctoberCMS `1.0.319 - 2.1.20`
+* OpenCart `1.5.5.1 - 3.0.3.8`
+* OpenMageLTS `1.1.1 - 20.0.13`
 * Owncloud `1.1 - 10.8`
 * OXID eShop Community Edition `4.6.7 - 6.9`
-* phpBB `2 - 3.3.5`
+* phpBB `2.0 - 3.3.5`
 * phpMyAdmin `2.2 - 5.1.1`
 * PrestaShop `1.5 - 1.7.8.1`
-* Shopware `1 - 5.7.6`
+* Shopware `1.0.2 - 5.7.6`
 * Shopware `6.4.6 - 6.4.7`
 * TYPO3 `3.6 - 11.5.2`
 * Umbraco `4.9 - 9.1.2`
-* WooCommerce `1 - 5.9`
-* WordPress `1.5 - 5.8.2`
+* WooCommerce `1.0 - 5.9`
+* WordPress `1.5 - 6.0.1`
 
 # Disclaimer
 This project can only be used for educational purposes. Using this software against target systems without prior permission is illegal, and any damages from misuse of this software will not be the responsibility of the author.
