@@ -27,8 +27,8 @@ const (
 )
 
 type fingerprinter struct {
-	h                map[string]structs.Filehash // all files hashes
-	k                []string                    // file paths in alphabetical order
+	hashes           map[string]structs.Filehash // all files hashes
+	files            []string                    // file paths in alphabetical order
 	tcounts          tagscount                   // used for quick lookup of next-to-be http get
 	hashLookup       hashlookup.HashLookup
 	requestHash      httpHashRequester
@@ -70,7 +70,7 @@ func NewFingerprinter(hashFilepath string) (*fingerprinter, error) {
 	// e.g. if I know it's 5.1.3 or 5.1.2, use just those
 
 	fp := &fingerprinter{
-		h:                hashes,
+		hashes:           hashes,
 		tcounts:          GetTagCounts(hashes),
 		hashLookup:       hashlookup.New(hashes),
 		requestHash:      defaultHttpHasher(),
@@ -79,7 +79,7 @@ func NewFingerprinter(hashFilepath string) (*fingerprinter, error) {
 		preferFilesInRoot: true,
 	}
 
-	fp.k = sortFilesByAccessLikelyhood(fp.h, fp.preferFilesInRoot) // TODO: initial sort should prefer files that are part of the latest release
+	fp.files = sortFilesByAccessLikelyhood(fp.hashes, fp.preferFilesInRoot) // TODO: initial sort should prefer files that are part of the latest release
 
 	return fp, nil
 }
@@ -126,7 +126,7 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 	}
 
 	queue := make(chan string, 5)
-	queue <- f.k[0] // TODO: what to use as first file call?? ideally something that splits versions 50/50 - or contains latest version, as is most likely..
+	queue <- f.files[0] // TODO: what to use as first file call?? ideally something that splits versions 50/50 - or contains latest version, as is most likely..
 	// TODO: if latest version is 5.1.0, then the first file to call should be one that still exists in 5.1.0
 	// otherwise might start an endless stream of fetching legacy files
 
@@ -193,8 +193,8 @@ func (f *fingerprinter) analyze(ctx context.Context, target, file string, client
 		// use next file in pre-sorted list
 		if len(sum.possibleVersions) == 0 {
 
-			if len(f.k) > sum.iterations {
-				return f.k[sum.iterations], sum, nil
+			if len(f.files) > sum.iterations {
+				return f.files[sum.iterations], sum, nil
 			}
 
 			return "", sum, errors.New("no tags identified. no more files to request")
@@ -211,8 +211,8 @@ func (f *fingerprinter) analyze(ctx context.Context, target, file string, client
 		// use next file in pre-sorted list
 		if len(sum.possibleVersions) == 0 {
 
-			if len(f.k) > sum.iterations {
-				return f.k[sum.iterations], sum, nil
+			if len(f.files) > sum.iterations {
+				return f.files[sum.iterations], sum, nil
 			}
 
 			return "", sum, errors.New("no tags identified. no more files to request")
@@ -293,7 +293,7 @@ func (f *fingerprinter) getVersions(ctx context.Context, target, file string, cl
 	}
 
 	// get corresponding entry in list
-	tags, ok := f.h[file][h]
+	tags, ok := f.hashes[file][h]
 	if !ok {
 		return []string{}, 200, fmt.Errorf("could not find hash equivalent for: %s", h)
 	}
