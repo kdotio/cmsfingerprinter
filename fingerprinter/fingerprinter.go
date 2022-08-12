@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"cms-fingerprinter/fingerprinter/hashlookup"
+	"cms-fingerprinter/fingerprinter/uniquefinder"
 	"cms-fingerprinter/helpers"
 	"cms-fingerprinter/structs"
 )
@@ -29,7 +30,7 @@ const (
 type fingerprinter struct {
 	hashes           map[string]structs.Filehash // all files hashes
 	files            []string                    // file paths in alphabetical order
-	tcounts          tagscount                   // used for quick lookup of next-to-be http get
+	uniqueLookup     uniquefinder.UniqueFinder   // used for quick lookup of next-to-be http get
 	hashLookup       hashlookup.HashLookup
 	requestHash      httpHashRequester
 	httpRequestDelay time.Duration
@@ -71,7 +72,7 @@ func NewFingerprinter(hashFilepath string) (*fingerprinter, error) {
 
 	fp := &fingerprinter{
 		hashes:           hashes,
-		tcounts:          GetTagCounts(hashes),
+		uniqueLookup:     uniquefinder.GetTagCounts(hashes),
 		hashLookup:       hashlookup.New(hashes),
 		requestHash:      defaultHttpHasher(),
 		httpRequestDelay: defaultRequestDelay,
@@ -200,7 +201,7 @@ func (f *fingerprinter) analyze(ctx context.Context, target, file string, client
 			return "", sum, errors.New("no tags identified. no more files to request")
 		}
 
-		next := f.tcounts.getMostUniqueFile(sum.possibleVersions, sum.requestedFiles)
+		next := f.uniqueLookup.GetMostUniqueFile(sum.possibleVersions, sum.requestedFiles)
 		return next, sum, nil
 	}
 
@@ -314,7 +315,7 @@ func (f *fingerprinter) guessNextRequest(ctx context.Context, possibleVersions [
 			return "", []string{}
 		}
 
-		nextRequest = f.tcounts.getMostUniqueFile(possibleVersions, requestedFiles)
+		nextRequest = f.uniqueLookup.GetMostUniqueFile(possibleVersions, requestedFiles)
 
 		if nextRequest == "" {
 			break
