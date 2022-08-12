@@ -22,8 +22,7 @@ const (
 )
 
 type fingerprinter struct {
-	hashes *hashparser.HashParser
-
+	hashes           *hashparser.HashParser
 	requestHash      httpHashRequester
 	httpRequestDelay time.Duration
 }
@@ -48,8 +47,11 @@ func NewFingerprinter(hashFilepath string) (*fingerprinter, error) {
 	}
 
 	fp := &fingerprinter{
-		hashes:           parser,
-		requestHash:      defaultHttpHasher(),
+		hashes: parser,
+		requestHash: defaultHttpHasher(&http.Client{
+			Timeout:   5 * time.Second,
+			Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
+		}),
 		httpRequestDelay: defaultRequestDelay,
 	}
 
@@ -76,13 +78,6 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 	target = strings.TrimSuffix(target, "/")
 
 	log.Println("Analyzing", target)
-
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
-	}
 
 	// TODO: do not just iterate over ALL hashes
 	// ideally start iterating with non-blocked folders, wp-includes/wp-content, not wp-admin
@@ -120,7 +115,7 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 
 		var nextRequest string
 		var err error
-		nextRequest, sum, err = f.analyze(ctx, target, file, client, sum)
+		nextRequest, sum, err = f.analyze(ctx, target, file, sum)
 		if err != nil {
 			return sum.iterations, []string{}, err
 		}
@@ -151,7 +146,7 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 	return sum.iterations, sorted, fmt.Errorf("too many possible versions (%d): %s", len(sum.possibleVersions), sorted)
 }
 
-func (f *fingerprinter) analyze(ctx context.Context, target, file string, client *http.Client, sum summary) (nextRequest string, s summary, err error) {
+func (f *fingerprinter) analyze(ctx context.Context, target, file string, sum summary) (nextRequest string, s summary, err error) {
 	if sum.httpNon200 > maxNon200HTTP {
 		return "", sum, fmt.Errorf("max non-200 http exceeded (%d)", maxNon200HTTP)
 	}
@@ -159,7 +154,7 @@ func (f *fingerprinter) analyze(ctx context.Context, target, file string, client
 	// make sure all requests are registered, irregardless of status code or error
 	sum.requestedFiles = append(sum.requestedFiles, file)
 
-	tags, sCode, err := f.getVersions(ctx, target, file, client)
+	tags, sCode, err := f.getVersions(ctx, target, file)
 	if err != nil {
 		log.Println(err)
 
@@ -252,7 +247,7 @@ func (f *fingerprinter) analyze(ctx context.Context, target, file string, client
 	return next, sum, nil
 }
 
-func (f *fingerprinter) getVersions(ctx context.Context, target, file string, client *http.Client) (tags []string, sCode int, err error) {
+func (f *fingerprinter) getVersions(ctx context.Context, target, file string) (tags []string, sCode int, err error) {
 	// TODO: must consider deployment path is different than github
 	// https://example.local/wp-content/plugins/woocommerce/assets/css/woocommerce-layout.css?ver=4.8.0
 	// vs.
@@ -261,7 +256,7 @@ func (f *fingerprinter) getVersions(ctx context.Context, target, file string, cl
 	t := fmt.Sprintf("%s/%s", strings.TrimSuffix(target, "/"), file)
 	log.Println("---------")
 
-	h, sCode, err := f.requestHash(ctx, client, t, file)
+	h, sCode, err := f.requestHash(ctx, t, file)
 	if err != nil {
 		return []string{}, 0, err
 	}

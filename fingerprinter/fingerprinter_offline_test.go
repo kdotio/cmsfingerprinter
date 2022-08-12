@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -63,7 +62,7 @@ func TestOffline(t *testing.T) {
 }
 
 func testHttpRequester(mockTarget string, sCodes map[string]string) httpHashRequester {
-	return func(ctx context.Context, client *http.Client, target, file string) (md5sum string, sCode int, err error) {
+	return func(_ context.Context, target, file string) (md5sum string, sCode int, err error) {
 		uri := strings.TrimPrefix(target, mockTarget)
 
 		if hash, ok := sCodes[uri]; ok {

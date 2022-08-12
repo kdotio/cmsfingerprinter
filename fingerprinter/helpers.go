@@ -26,10 +26,10 @@ func isImage(file string) bool {
 	return false
 }
 
-type httpHashRequester func(ctx context.Context, client *http.Client, target, file string) (md5sum string, sCode int, err error)
+type httpHashRequester func(ctx context.Context, target, file string) (md5sum string, sCode int, err error)
 
-func defaultHttpHasher() httpHashRequester {
-	return func(ctx context.Context, client *http.Client, target, file string) (md5sum string, sCode int, err error) {
+func defaultHttpHasher(client *http.Client) httpHashRequester {
+	return func(ctx context.Context, target, file string) (md5sum string, sCode int, err error) {
 		body, sCode, err := httpRequest(ctx, client, target)
 		if err != nil {
 			return "", 0, err
