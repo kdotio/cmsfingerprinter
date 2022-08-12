@@ -101,13 +101,9 @@ func (e *Evaluation) nextRequestOnSuccess(ctx context.Context, sCode int, tags [
 		return next, nil
 	}
 
-	// TODO: compare possible version, grab best uniqueness level from each and then
-	// channel most lucrative filepath
-
 	log.Println("Found tags:", tags)
 
 	previousPossibleVersions := e.possibleVersions
-
 	if len(e.possibleVersions) == 0 {
 		e.possibleVersions = tags
 

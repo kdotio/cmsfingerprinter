@@ -62,6 +62,9 @@ func (h *HashParser) Parse(fpath string) error {
 	h.hlookup = hashlookup.New(hashes)
 	h.files = sortFilesByAccessLikelyhood(hashes, h.PreferFilesInRoot) // TODO: initial sort should prefer files that are part of the latest release
 
+	// TODO: generate list of unique files for EACH tag
+	// so narrowing down is sped up greatly when fixed number of tags is known
+
 	return nil
 }
 

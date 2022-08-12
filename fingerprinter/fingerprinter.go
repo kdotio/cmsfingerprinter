@@ -59,24 +59,16 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 	target = strings.TrimSuffix(target, "/")
 	log.Println("Analyzing", target)
 
-	// TODO: do not just iterate over ALL hashes
-	// ideally start iterating with non-blocked folders, wp-includes/wp-content, not wp-admin
-	// but: if a small list of versions is found
-	// use pre-calculated best route for quick determination
-	// e.g. get files for which a tag is unique
-	// alternatively
-	// Currently (4) possible versions: [5.4.4 5.4.3 5.4.2 5.4.1]
-	// testcase should be 5.4.4, ultimately
-
 	queue := make(chan string, 1)
 	next, err := f.hashes.GetFile(0)
 	if err != nil {
 		return 0, []string{}, errors.New("missing zero index")
 	}
 
-	queue <- next // TODO: what to use as first file call?? ideally something that splits versions 50/50 - or contains latest version, as is most likely..
-	// TODO: if latest version is 5.1.0, then the first file to call should be one that still exists in 5.1.0
+	// TODO: what to use as first file call?? ideally something that splits versions 50/50 - or contains latest version, as is most likely..
+	// if latest version is 5.1.0, then the first file to call should be one that still exists in 5.1.0
 	// otherwise might start an endless stream of fetching legacy files
+	queue <- next
 
 	eval, err := evaluator.New(depth, f.hashes, f.getVersions)
 	if err != nil {

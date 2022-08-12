@@ -134,7 +134,7 @@ func sortFilesByAccessLikelyhood(hashesPerFile map[string]structs.Filehash, pref
 	return mk
 }
 
-// TODO: allow custom sorts, currently this is for WordPress only
+// TODO: allow custom sorting by caller
 func isLikelyAccessible(file string) bool {
 	if strings.Contains(file, "wp-includes") ||
 		strings.Contains(file, "wp-content") {
