@@ -111,29 +111,18 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 }
 
 func (f *fingerprinter) getVersions(ctx context.Context, target, file string) (tags []string, sCode int, err error) {
-	// TODO: must consider deployment path is different than github
-	// https://example.local/wp-content/plugins/woocommerce/assets/css/woocommerce-layout.css?ver=4.8.0
-	// vs.
-	// /assets/js/frontend/checkout.js
-
 	t := fmt.Sprintf("%s/%s", strings.TrimSuffix(target, "/"), file)
 	log.Println("---------")
 
 	h, sCode, err := f.requestHash(ctx, t, file)
-	if err != nil {
-		return []string{}, 0, err
-	}
-
-	if sCode != 200 {
-		return []string{}, sCode, nil
+	if err != nil || sCode != 200 {
+		return []string{}, sCode, err
 	}
 
 	tags, err = f.hashes.GetTags(file, h)
 	if err != nil {
 		return []string{}, 200, err
 	}
-
-	log.Println("Found tags:", tags)
 
 	return tags, 200, nil
 }

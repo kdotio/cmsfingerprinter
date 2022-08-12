@@ -35,9 +35,8 @@ func defaultHttpHasher(client *http.Client) httpHashRequester {
 			return "", 0, err
 		}
 
-		log.Printf("(%d) %s\n", sCode, target)
-
 		if sCode != 200 {
+			log.Printf("(%d) %s\n", sCode, target)
 			return "", sCode, nil
 		}
 
@@ -65,7 +64,7 @@ func defaultHttpHasher(client *http.Client) httpHashRequester {
 		//body = strings.TrimSuffix(body, "\n") // sometimes \r\n is added to file end, without trim no match can be made
 
 		h := md5hash(body)
-		log.Printf("Generated %s for %s\n", h, file)
+		log.Printf("(%d) %s [%s]\n", sCode, target, h)
 
 		return h, 200, nil
 	}
