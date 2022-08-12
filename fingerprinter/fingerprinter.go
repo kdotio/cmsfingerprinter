@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	defaultRequestDelay = 1 * time.Second
+	defaultRequestDelay = 500 * time.Millisecond
 )
 
 type fingerprinter struct {
