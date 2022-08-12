@@ -10,14 +10,12 @@ import (
 	"strings"
 	"time"
 
+	"cms-fingerprinter/fingerprinter/evaluator"
 	"cms-fingerprinter/fingerprinter/hashparser"
 	"cms-fingerprinter/helpers"
 )
 
-// should return with err after this many 404 calls
 const (
-	maxNon200HTTP = 20
-
 	defaultRequestDelay = 1 * time.Second
 )
 
@@ -50,7 +48,7 @@ func NewFingerprinter(hashFilepath string) (*fingerprinter, error) {
 		hashes: parser,
 		requestHash: defaultHttpHasher(&http.Client{
 			Timeout:   5 * time.Second,
-			Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
+			Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}, // allow invalid certs for pentesting purposes
 		}),
 		httpRequestDelay: defaultRequestDelay,
 	}
@@ -58,20 +56,10 @@ func NewFingerprinter(hashFilepath string) (*fingerprinter, error) {
 	return fp, nil
 }
 
-type summary struct {
-	iterations int
-	matchedTag string
-
-	possibleVersions []string
-	requestedFiles   []string
-	httpNon200       int
-}
-
 func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (httpRequests int, revs []string, err error) {
 	defer helpers.TimeTrack(time.Now(), "Analyzing")
 
 	target = strings.TrimSuffix(target, "/")
-
 	log.Println("Analyzing", target)
 
 	// TODO: do not just iterate over ALL hashes
@@ -83,37 +71,33 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 	// Currently (4) possible versions: [5.4.4 5.4.3 5.4.2 5.4.1]
 	// testcase should be 5.4.4, ultimately
 
-	sum := summary{}
-
 	queue := make(chan string, 1)
 	next, err := f.hashes.GetFile(0)
 	if err != nil {
-		return sum.iterations, []string{}, errors.New("missing zero index")
+		return 0, []string{}, errors.New("missing zero index")
 	}
 
 	queue <- next // TODO: what to use as first file call?? ideally something that splits versions 50/50 - or contains latest version, as is most likely..
 	// TODO: if latest version is 5.1.0, then the first file to call should be one that still exists in 5.1.0
 	// otherwise might start an endless stream of fetching legacy files
 
+	eval, err := evaluator.New(depth, f.hashes, f.getVersions)
+	if err != nil {
+		return 0, []string{}, err
+	}
+
 	for file := range queue {
 		if helpers.IsDone((ctx.Done())) {
-			return sum.iterations, []string{}, errors.New("context canceled")
+			return eval.Iterations(), []string{}, errors.New("context canceled")
 		}
 
-		if depth != 0 && sum.iterations+1 > depth {
-			return sum.iterations, []string{}, fmt.Errorf("depth reached (%d)", depth)
-		}
-		sum.iterations++
-
-		var nextRequest string
-		var err error
-		nextRequest, sum, err = f.analyze(ctx, target, file, sum)
+		nextRequest, err := eval.Analyze(ctx, target, file)
 		if err != nil {
-			return sum.iterations, []string{}, err
+			return eval.Iterations(), []string{}, err
 		}
 
-		if sum.matchedTag != "" {
-			return sum.iterations, []string{sum.matchedTag}, nil
+		if match, err := eval.SingleMatch(); err == nil {
+			return eval.Iterations(), []string{match}, nil
 		}
 
 		if nextRequest == "" {
@@ -125,92 +109,8 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 		time.Sleep(f.httpRequestDelay)
 	}
 
-	sorted := helpers.SortRevsAlphabeticallyDesc(sum.possibleVersions)
-
-	return sum.iterations, sorted, fmt.Errorf("too many possible versions (%d): %s", len(sum.possibleVersions), sorted)
-}
-
-func (f *fingerprinter) analyze(ctx context.Context, target, file string, sum summary) (nextRequest string, s summary, err error) {
-	if sum.httpNon200 > maxNon200HTTP {
-		return "", sum, fmt.Errorf("max non-200 http exceeded (%d)", maxNon200HTTP)
-	}
-
-	// make sure all requests are registered, irregardless of status code or error
-	sum.requestedFiles = append(sum.requestedFiles, file)
-
-	tags, sCode, err := f.getVersions(ctx, target, file)
-	if err != nil {
-		log.Println(err)
-
-		if helpers.IsHostUnavailable(err) {
-			return "", sum, fmt.Errorf("target unreachable: %s", err)
-		}
-
-		// if no versions were identified positively yet
-		// use next file in pre-sorted list
-		if len(sum.possibleVersions) == 0 {
-
-			if next, err := f.hashes.GetFile(sum.iterations); err == nil {
-				return next, sum, nil
-			}
-
-			return "", sum, errors.New("no tags identified. no more files to request")
-		}
-
-		next := f.hashes.GetMostUniqueFile(sum.possibleVersions, sum.requestedFiles)
-		return next, sum, nil
-	}
-
-	if sCode != 200 {
-		sum.httpNon200++
-
-		// if no versions were identified positively yet
-		// use next file in pre-sorted list
-		if len(sum.possibleVersions) == 0 {
-
-			if next, err := f.hashes.GetFile(sum.iterations); err == nil {
-				return next, sum, nil
-			}
-
-			return "", sum, errors.New("no tags identified. no more files to request")
-		}
-
-		var next string
-		next, sum.requestedFiles = f.hashes.GuessNextRequest(ctx, sum.possibleVersions, sum.requestedFiles)
-
-		return next, sum, nil
-	}
-
-	// TODO: compare possible version, grab best uniqueness level from each and then
-	// channel most lucrative filepath
-
-	previousPossibleVersions := sum.possibleVersions
-
-	if len(sum.possibleVersions) == 0 {
-		sum.possibleVersions = tags
-
-	} else {
-		sum.possibleVersions = helpers.Intersect(sum.possibleVersions, tags)
-	}
-
-	log.Printf("Currently (%d) possible versions: %s\n", len(sum.possibleVersions), sum.possibleVersions)
-
-	// this may happen if e.g. a file returns tags:[5.4.2]
-	// and previous possible versions is [5.7 5.6.2 5.6.1 5.6 5.5.3 5.5.2 5.5.1 5.5]
-	// from then on, there is no more way to continue
-	if len(sum.possibleVersions) == 0 {
-		return "", sum, fmt.Errorf("ERROR: no intersection between tags %s and previous possible versions %s", tags, previousPossibleVersions)
-	}
-
-	if len(sum.possibleVersions) == 1 {
-		sum.matchedTag = sum.possibleVersions[0]
-		return "", sum, nil
-	}
-
-	var next string
-	next, sum.requestedFiles = f.hashes.GuessNextRequest(ctx, sum.possibleVersions, sum.requestedFiles)
-
-	return next, sum, nil
+	possibleVersions := eval.PossibleVersions()
+	return eval.Iterations(), possibleVersions, fmt.Errorf("too many possible versions (%d): %s", len(possibleVersions), possibleVersions)
 }
 
 func (f *fingerprinter) getVersions(ctx context.Context, target, file string) (tags []string, sCode int, err error) {
