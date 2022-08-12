@@ -28,9 +28,6 @@ type fingerprinter struct {
 // NewFingerprinter returns a re-usable fingerprinter for a specific CMS.
 // Is currently NOT THREAD-SAFE
 func NewFingerprinter(hashFilepath string) (*fingerprinter, error) {
-	// TODO: allow exclusion of certain versions for limiting down quickly
-	// e.g. if I know it's 5.1.3 or 5.1.2, use just those
-
 	parser := hashparser.New()
 	parser.PreferFilesInRoot = true
 	parser.ExcludedFileMatcher = []string{"wp-admin", "/config/"}
