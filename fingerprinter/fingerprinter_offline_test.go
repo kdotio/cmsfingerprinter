@@ -29,6 +29,7 @@ func TestOffline(t *testing.T) {
 		{cms: "drupal", testdata: testDrupal()},
 		{cms: "joomla", testdata: testJoomla()},
 		{cms: "typo3", testdata: testTypo3()},
+		{cms: "wordpress", testdata: testWordpress()},
 	}
 
 	const testcase = "http://example.local"
@@ -116,5 +117,13 @@ func testTypo3() testcaseOffline {
 	return testcaseOffline{[]string{"8.7.32"}, map[string]string{
 		"/typo3/sysext/backend/Resources/Public/Css/backend.css":          "81932b9d6616b50ac93669b465535d2b",
 		"/typo3/sysext/backend/Resources/Public/JavaScript/FormEngine.js": "8b5efa4095433e28d704b7c1bdcd2594",
+	}}
+}
+
+func testWordpress() testcaseOffline {
+	return testcaseOffline{[]string{"5.8.4"}, map[string]string{
+		"/readme.html":                          "5c5fb2fc92934133f676ab414579b55b",
+		"/wp-includes/css/media-views-rtl.css":  "071a0f3a8cb7d790ce3b5cb4a9e8e8de",
+		"/wp-includes/js/dist/block-library.js": "1ed4effc0f532ace2602e456a6279c15",
 	}}
 }
