@@ -54,8 +54,6 @@ func NewFingerprinter(hashFilepath string) (*fingerprinter, error) {
 }
 
 func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (httpRequests int, revs []string, err error) {
-	defer helpers.TimeTrack(time.Now(), "Analyzing")
-
 	target = strings.TrimSuffix(target, "/")
 	log.Println("Analyzing", target)
 

@@ -1,14 +1,12 @@
 package helpers
 
 import (
-	"log"
 	"net"
 	"net/url"
 	"os"
 	"sort"
 	"strings"
 	"syscall"
-	"time"
 )
 
 func IsDone(done <-chan struct{}) bool {
@@ -18,11 +16,6 @@ func IsDone(done <-chan struct{}) bool {
 	default:
 		return false
 	}
-}
-
-func TimeTrack(start time.Time, name string) {
-	elapsed := time.Since(start)
-	log.Printf("%s took %s", name, elapsed)
 }
 
 func Intersect(x, y []string) []string {
