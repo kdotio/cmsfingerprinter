@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -26,14 +25,7 @@ func main() {
 		log.Fatal("no target defined")
 	}
 
-	relPath := filepath.Join("./hashes/", fmt.Sprintf("%s.json", *input))
-
-	fpath, err := filepath.Abs(relPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_, err = os.Stat(fpath)
+	fpath, err := filepath.Abs(filepath.Join("./hashes/", fmt.Sprintf("%s.json", *input)))
 	if err != nil {
 		log.Fatal(err)
 	}
