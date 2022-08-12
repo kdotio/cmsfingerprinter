@@ -59,13 +59,8 @@ func NewFingerprinter(hashFilepath string) (*fingerprinter, error) {
 }
 
 type summary struct {
-	// const
-	requiredMatches int
-
-	// vars
-	iterations   int
-	foundMatches int
-	matchedTag   string
+	iterations int
+	matchedTag string
 
 	possibleVersions []string
 	requestedFiles   []string
@@ -88,12 +83,9 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 	// Currently (4) possible versions: [5.4.4 5.4.3 5.4.2 5.4.1]
 	// testcase should be 5.4.4, ultimately
 
-	sum := summary{
-		requiredMatches: 1, // might require more than one hash match for finalization
-	}
+	sum := summary{}
 
-	queue := make(chan string, 5)
-
+	queue := make(chan string, 1)
 	next, err := f.hashes.GetFile(0)
 	if err != nil {
 		return sum.iterations, []string{}, errors.New("missing zero index")
@@ -120,25 +112,17 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 			return sum.iterations, []string{}, err
 		}
 
-		if nextRequest == "" {
-			if sum.foundMatches == 0 {
-				log.Println("ERROR: no more files to request")
-			}
+		if sum.matchedTag != "" {
+			return sum.iterations, []string{sum.matchedTag}, nil
+		}
 
+		if nextRequest == "" {
+			log.Println("ERROR: no more files to request")
 			break
 		}
 
 		queue <- nextRequest
 		time.Sleep(f.httpRequestDelay)
-	}
-
-	if sum.foundMatches > 0 {
-
-		if sum.foundMatches < sum.requiredMatches {
-			log.Printf("TRACE: Got match, but not enough verifications. Expected (%d), got only (%d)\n", sum.requiredMatches, sum.foundMatches)
-		}
-
-		return sum.iterations, []string{sum.matchedTag}, nil
 	}
 
 	sorted := helpers.SortRevsAlphabeticallyDesc(sum.possibleVersions)
@@ -219,26 +203,8 @@ func (f *fingerprinter) analyze(ctx context.Context, target, file string, sum su
 	}
 
 	if len(sum.possibleVersions) == 1 {
-
-		// first finding
-		if sum.matchedTag == "" {
-			sum.matchedTag = sum.possibleVersions[0]
-			sum.foundMatches++
-		}
-
-		if sum.matchedTag == sum.possibleVersions[0] {
-			sum.foundMatches++
-
-		} else {
-			return "", sum, fmt.Errorf("ERROR: Got two separate uniqe matches: %s (%d matches) vs. %s", sum.matchedTag, sum.foundMatches, sum.possibleVersions[0])
-		}
-
-		if sum.foundMatches >= sum.requiredMatches {
-			return "", sum, nil
-		}
-
-		// else continue search w/ previous tags
-		sum.possibleVersions = previousPossibleVersions
+		sum.matchedTag = sum.possibleVersions[0]
+		return "", sum, nil
 	}
 
 	var next string
