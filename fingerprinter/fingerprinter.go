@@ -3,19 +3,15 @@ package fingerprinter
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
-	"cms-fingerprinter/fingerprinter/hashlookup"
-	"cms-fingerprinter/fingerprinter/uniquefinder"
+	"cms-fingerprinter/fingerprinter/hashparser"
 	"cms-fingerprinter/helpers"
-	"cms-fingerprinter/structs"
 )
 
 // should return with err after this many 404 calls
@@ -23,64 +19,39 @@ const (
 	maxNon200HTTP = 20
 
 	defaultRequestDelay = 1 * time.Second
-
-	excludeFilesWithUnlikelyAccess = true
 )
 
 type fingerprinter struct {
-	hashes           map[string]structs.Filehash // all files hashes
-	files            []string                    // file paths in alphabetical order
-	uniqueLookup     uniquefinder.UniqueFinder   // used for quick lookup of next-to-be http get
-	hashLookup       hashlookup.HashLookup
+	hashes *hashparser.HashParser
+
 	requestHash      httpHashRequester
 	httpRequestDelay time.Duration
-
-	preferFilesInRoot bool
 }
 
+// NewFingerprinter returns a re-usable fingerprinter for a specific CMS.
+// Is currently NOT THREAD-SAFE
 func NewFingerprinter(hashFilepath string) (*fingerprinter, error) {
-	// load hashes from file
-	bytes, err := os.ReadFile(hashFilepath)
-	if err != nil {
-		return nil, err
-	}
-
-	hashes := map[string]structs.Filehash{}
-	err = json.Unmarshal(bytes, &hashes)
-	if err != nil {
-		return nil, err
-	}
-
-	if excludeFilesWithUnlikelyAccess {
-		hashes = excludeForbiddenFiles(hashes, []string{"wp-admin", "/config/"})
-	}
-
-	// Umbraco
-	// hashes = includeOnly(hashes, []string{"/assets/", "/lib/"}) // TODO: add option for including only certain files
-	// Wordpress
-	// hashes = includeOnly(hashes, []string{".xlf})
-
-	// Contao accessibility
-	// hashes = includeOnly(hashes, []string{"assets/contao"})
-
-	if len(hashes) == 0 {
-		return nil, errors.New("zero hashes available")
-	}
-
 	// TODO: allow exclusion of certain versions for limiting down quickly
 	// e.g. if I know it's 5.1.3 or 5.1.2, use just those
 
-	fp := &fingerprinter{
-		hashes:           hashes,
-		uniqueLookup:     uniquefinder.GetTagCounts(hashes),
-		hashLookup:       hashlookup.New(hashes),
-		requestHash:      defaultHttpHasher(),
-		httpRequestDelay: defaultRequestDelay,
+	parser := hashparser.New()
+	parser.PreferFilesInRoot = true
+	parser.ExcludedFileMatcher = []string{"wp-admin", "/config/"}
 
-		preferFilesInRoot: true,
+	// parser.IncludeOnlyMatcher =  []string{"/assets/", "/lib/"} // Umbraco
+	// parser.IncludeOnlyMatcher =  []string{".xlf"} // Wordpress
+	// parser.IncludeOnlyMatcher =  []string{"assets/contao"} // Contao accessibility
+
+	err := parser.Parse(hashFilepath)
+	if err != nil {
+		return nil, fmt.Errorf("parse: %s", err)
 	}
 
-	fp.files = sortFilesByAccessLikelyhood(fp.hashes, fp.preferFilesInRoot) // TODO: initial sort should prefer files that are part of the latest release
+	fp := &fingerprinter{
+		hashes:           parser,
+		requestHash:      defaultHttpHasher(),
+		httpRequestDelay: defaultRequestDelay,
+	}
 
 	return fp, nil
 }
@@ -127,7 +98,13 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 	}
 
 	queue := make(chan string, 5)
-	queue <- f.files[0] // TODO: what to use as first file call?? ideally something that splits versions 50/50 - or contains latest version, as is most likely..
+
+	next, err := f.hashes.GetFile(0)
+	if err != nil {
+		return sum.iterations, []string{}, errors.New("missing zero index")
+	}
+
+	queue <- next // TODO: what to use as first file call?? ideally something that splits versions 50/50 - or contains latest version, as is most likely..
 	// TODO: if latest version is 5.1.0, then the first file to call should be one that still exists in 5.1.0
 	// otherwise might start an endless stream of fetching legacy files
 
@@ -194,14 +171,14 @@ func (f *fingerprinter) analyze(ctx context.Context, target, file string, client
 		// use next file in pre-sorted list
 		if len(sum.possibleVersions) == 0 {
 
-			if len(f.files) > sum.iterations {
-				return f.files[sum.iterations], sum, nil
+			if next, err := f.hashes.GetFile(sum.iterations); err == nil {
+				return next, sum, nil
 			}
 
 			return "", sum, errors.New("no tags identified. no more files to request")
 		}
 
-		next := f.uniqueLookup.GetMostUniqueFile(sum.possibleVersions, sum.requestedFiles)
+		next := f.hashes.GetMostUniqueFile(sum.possibleVersions, sum.requestedFiles)
 		return next, sum, nil
 	}
 
@@ -212,15 +189,15 @@ func (f *fingerprinter) analyze(ctx context.Context, target, file string, client
 		// use next file in pre-sorted list
 		if len(sum.possibleVersions) == 0 {
 
-			if len(f.files) > sum.iterations {
-				return f.files[sum.iterations], sum, nil
+			if next, err := f.hashes.GetFile(sum.iterations); err == nil {
+				return next, sum, nil
 			}
 
 			return "", sum, errors.New("no tags identified. no more files to request")
 		}
 
 		var next string
-		next, sum.requestedFiles = f.guessNextRequest(ctx, sum.possibleVersions, sum.requestedFiles)
+		next, sum.requestedFiles = f.hashes.GuessNextRequest(ctx, sum.possibleVersions, sum.requestedFiles)
 
 		return next, sum, nil
 	}
@@ -270,7 +247,7 @@ func (f *fingerprinter) analyze(ctx context.Context, target, file string, client
 	}
 
 	var next string
-	next, sum.requestedFiles = f.guessNextRequest(ctx, sum.possibleVersions, sum.requestedFiles)
+	next, sum.requestedFiles = f.hashes.GuessNextRequest(ctx, sum.possibleVersions, sum.requestedFiles)
 
 	return next, sum, nil
 }
@@ -293,50 +270,12 @@ func (f *fingerprinter) getVersions(ctx context.Context, target, file string, cl
 		return []string{}, sCode, nil
 	}
 
-	// get corresponding entry in list
-	tags, ok := f.hashes[file][h]
-	if !ok {
-		return []string{}, 200, fmt.Errorf("could not find hash equivalent for: %s", h)
-	}
-
-	if len(tags) == 0 {
-		return []string{}, 200, fmt.Errorf("zero tags for hash: %s", h)
+	tags, err = f.hashes.GetTags(file, h)
+	if err != nil {
+		return []string{}, 200, err
 	}
 
 	log.Println("Found tags:", tags)
 
 	return tags, 200, nil
-}
-
-func (f *fingerprinter) guessNextRequest(ctx context.Context, possibleVersions []string, requestedFiles []string) (nextRequest string, requested []string) {
-
-	for {
-		if helpers.IsDone((ctx.Done())) {
-			return "", []string{}
-		}
-
-		nextRequest = f.uniqueLookup.GetMostUniqueFile(possibleVersions, requestedFiles)
-
-		if nextRequest == "" {
-			break
-		}
-
-		// skip running file get, if no versions can be truncated by running the hash
-		allFilesShareHash, err := f.hashLookup.DoTagsShareHash(nextRequest, possibleVersions)
-		if err != nil {
-			log.Println("ERROR:", err)
-		}
-
-		// if running the file, one or more tags can be eliminated, run it
-		if !allFilesShareHash {
-			break
-		}
-
-		// log.Println("cannot eliminate any tags using file. skipping:", nextRequest)
-
-		// else consider the file skipped
-		requestedFiles = helpers.AppendIfMissing(requestedFiles, nextRequest)
-	}
-
-	return nextRequest, requestedFiles
 }

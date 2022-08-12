@@ -1,4 +1,4 @@
-package fingerprinter
+package hashparser
 
 import (
 	"sort"
