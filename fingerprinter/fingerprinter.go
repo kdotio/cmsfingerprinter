@@ -65,6 +65,9 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string) (httpRequest
 	target = strings.TrimSuffix(target, "/")
 	log.Println("Analyzing", target)
 
+	// TODO: run optional faulty redirect check
+	// if target returns faulty 200 status code for any URI, evaluation may run til timeout needlessly
+
 	next, err := f.hashes.GetFile(0)
 	if err != nil {
 		return 0, []string{}, errors.New("missing zero index")
