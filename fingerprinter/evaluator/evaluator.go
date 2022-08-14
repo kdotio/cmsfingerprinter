@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"cms-fingerprinter/helpers"
+	"cmsfingerprinter/helpers"
 )
 
 // should return with err after this many 404 calls

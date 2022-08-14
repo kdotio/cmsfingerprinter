@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"cms-fingerprinter/structs"
+	"cmsfingerprinter/structs"
 )
 
 type filetags map[string]string

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"cms-fingerprinter/structs"
+	"cmsfingerprinter/structs"
 )
 
 func TestParse(t *testing.T) {

@@ -3,8 +3,8 @@ package uniquefinder
 import (
 	"log"
 
-	"cms-fingerprinter/helpers"
-	"cms-fingerprinter/structs"
+	"cmsfingerprinter/helpers"
+	"cmsfingerprinter/structs"
 )
 
 type uniqueness struct {

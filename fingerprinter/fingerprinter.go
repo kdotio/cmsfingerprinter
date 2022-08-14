@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"cms-fingerprinter/fingerprinter/evaluator"
-	"cms-fingerprinter/fingerprinter/hashparser"
-	"cms-fingerprinter/helpers"
+	"cmsfingerprinter/fingerprinter/evaluator"
+	"cmsfingerprinter/fingerprinter/hashparser"
+	"cmsfingerprinter/helpers"
 )
 
 const (

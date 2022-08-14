@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"log"
 
-	"cms-fingerprinter/fingerprinter/hashparser/hashlookup"
-	"cms-fingerprinter/fingerprinter/hashparser/uniquefinder"
-	"cms-fingerprinter/helpers"
-	"cms-fingerprinter/structs"
+	"cmsfingerprinter/fingerprinter/hashparser/hashlookup"
+	"cmsfingerprinter/fingerprinter/hashparser/uniquefinder"
+	"cmsfingerprinter/helpers"
+	"cmsfingerprinter/structs"
 )
 
 type HashParser struct {

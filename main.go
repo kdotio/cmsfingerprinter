@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"cms-fingerprinter/fingerprinter"
+	"cmsfingerprinter/fingerprinter"
 )
 
 func main() {

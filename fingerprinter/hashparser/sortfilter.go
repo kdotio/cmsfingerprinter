@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"cms-fingerprinter/structs"
+	"cmsfingerprinter/structs"
 )
 
 func includeOnly(fhashes map[string]structs.Filehash, includeMatcher []string) map[string]structs.Filehash {

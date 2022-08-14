@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"cms-fingerprinter/helpers"
+	"cmsfingerprinter/helpers"
 )
 
 type testcaseOffline struct {
