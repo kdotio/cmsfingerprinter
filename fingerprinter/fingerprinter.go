@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"cms-fingerprinter/fingerprinter/evaluator"
@@ -17,12 +18,15 @@ import (
 
 const (
 	defaultRequestDelay = 500 * time.Millisecond
+	defaultMaxDepth     = 15
 )
 
 type fingerprinter struct {
+	mutex            sync.RWMutex
 	hashes           *hashparser.HashParser
 	requestHash      httpHashRequester
 	httpRequestDelay time.Duration
+	maxDepth         int
 }
 
 // NewFingerprinter returns a re-usable fingerprinter for a specific CMS.
@@ -48,12 +52,16 @@ func NewFingerprinter(rawHashes []byte) (*fingerprinter, error) {
 			Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}, // allow invalid certs for pentesting purposes
 		}),
 		httpRequestDelay: defaultRequestDelay,
+		maxDepth:         defaultMaxDepth,
 	}
 
 	return fp, nil
 }
 
-func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (httpRequests int, revs []string, err error) {
+func (f *fingerprinter) Analyze(ctx context.Context, target string) (httpRequests int, revs []string, err error) {
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
+
 	target = strings.TrimSuffix(target, "/")
 	log.Println("Analyzing", target)
 
@@ -68,7 +76,7 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 	queue := make(chan string, 1)
 	queue <- next
 
-	eval, err := evaluator.New(depth, f.hashes, f.getVersions)
+	eval, err := evaluator.New(f.maxDepth, f.hashes, f.getVersions)
 	if err != nil {
 		return 0, []string{}, err
 	}
@@ -99,8 +107,41 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 	return eval.Iterations(), eval.PossibleVersions(), nil
 }
 
-func (f *fingerprinter) getVersions(ctx context.Context, baseTarget, file string) (tags []string, sCode int, err error) {
-	t := fmt.Sprintf("%s/%s", strings.TrimSuffix(baseTarget, "/"), file)
+func (f *fingerprinter) SetRequestDelay(duration time.Duration) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	f.httpRequestDelay = duration
+}
+
+func (f *fingerprinter) SetDepth(depth int) {
+	if depth < 0 {
+		return
+	}
+
+	// 0 is a valid value, meaning algorithm will run until done
+	// irregardless of necessary requests
+
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	f.maxDepth = depth
+}
+
+func (f *fingerprinter) SetRequester(requester httpHashRequester) error {
+	if requester == nil {
+		return errors.New("nil http requester")
+	}
+
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	f.requestHash = requester
+	return nil
+}
+
+func (f *fingerprinter) getVersions(ctx context.Context, target, file string) (tags []string, sCode int, err error) {
+	t := fmt.Sprintf("%s/%s", strings.TrimSuffix(target, "/"), file)
 	log.Println("---------")
 
 	h, sCode, err := f.requestHash(ctx, t)

@@ -57,7 +57,7 @@ func TestOffline(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 
-			_, tag, err := f.Analyze(ctx, testcase, 20)
+			_, tag, err := f.Analyze(ctx, testcase)
 			if err != nil {
 				t.Fatal(err)
 			}
