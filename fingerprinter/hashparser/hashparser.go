@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 
 	"cms-fingerprinter/fingerprinter/hashparser/hashlookup"
 	"cms-fingerprinter/fingerprinter/hashparser/uniquefinder"
@@ -33,14 +32,9 @@ func New() *HashParser {
 	return &HashParser{}
 }
 
-func (h *HashParser) Parse(fpath string) error {
-	bytes, err := os.ReadFile(fpath)
-	if err != nil {
-		return err
-	}
-
+func (h *HashParser) Parse(rawHashes []byte) error {
 	hashes := map[string]structs.Filehash{}
-	err = json.Unmarshal(bytes, &hashes)
+	err := json.Unmarshal(rawHashes, &hashes)
 	if err != nil {
 		return err
 	}

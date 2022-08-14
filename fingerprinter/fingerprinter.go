@@ -27,7 +27,7 @@ type fingerprinter struct {
 
 // NewFingerprinter returns a re-usable fingerprinter for a specific CMS.
 // Is currently NOT THREAD-SAFE
-func NewFingerprinter(hashFilepath string) (*fingerprinter, error) {
+func NewFingerprinter(rawHashes []byte) (*fingerprinter, error) {
 	parser := hashparser.New()
 	parser.PreferFilesInRoot = true
 	parser.ExcludedFileMatcher = []string{"wp-admin", "/config/", "wp-content/themes"} // WordPress
@@ -36,7 +36,7 @@ func NewFingerprinter(hashFilepath string) (*fingerprinter, error) {
 	// parser.IncludeOnlyMatcher =  []string{".xlf"} // Wordpress
 	// parser.IncludeOnlyMatcher =  []string{"assets/contao"} // Contao accessibility
 
-	err := parser.Parse(hashFilepath)
+	err := parser.Parse(rawHashes)
 	if err != nil {
 		return nil, fmt.Errorf("parse: %s", err)
 	}
@@ -57,7 +57,6 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 	target = strings.TrimSuffix(target, "/")
 	log.Println("Analyzing", target)
 
-	queue := make(chan string, 1)
 	next, err := f.hashes.GetFile(0)
 	if err != nil {
 		return 0, []string{}, errors.New("missing zero index")
@@ -66,6 +65,7 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 	// TODO: what to use as first file call?? ideally something that splits versions 50/50 - or contains latest version, as is most likely..
 	// if latest version is 5.1.0, then the first file to call should be one that still exists in 5.1.0
 	// otherwise might start an endless stream of fetching legacy files
+	queue := make(chan string, 1)
 	queue <- next
 
 	eval, err := evaluator.New(depth, f.hashes, f.getVersions)

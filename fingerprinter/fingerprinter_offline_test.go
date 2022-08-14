@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -38,7 +39,12 @@ func TestOffline(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.cms, func(t *testing.T) {
 
-			f, err := NewFingerprinter(fmt.Sprintf("../hashes/%s.json", tc.cms))
+			bytes, err := os.ReadFile(fmt.Sprintf("../hashes/%s.json", tc.cms))
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			f, err := NewFingerprinter(bytes)
 			if err != nil {
 				t.Fatal(err)
 			}

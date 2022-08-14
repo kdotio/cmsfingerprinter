@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -30,7 +31,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	f, err := fingerprinter.NewFingerprinter(fpath)
+	bytes, err := os.ReadFile(fpath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	f, err := fingerprinter.NewFingerprinter(bytes)
 	if err != nil {
 		log.Fatal(err)
 	}
