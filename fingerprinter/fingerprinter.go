@@ -30,7 +30,7 @@ type fingerprinter struct {
 func NewFingerprinter(hashFilepath string) (*fingerprinter, error) {
 	parser := hashparser.New()
 	parser.PreferFilesInRoot = true
-	parser.ExcludedFileMatcher = []string{"wp-admin", "/config/"}
+	parser.ExcludedFileMatcher = []string{"wp-admin", "/config/", "wp-content/themes"} // WordPress
 
 	// parser.IncludeOnlyMatcher =  []string{"/assets/", "/lib/"} // Umbraco
 	// parser.IncludeOnlyMatcher =  []string{".xlf"} // Wordpress
