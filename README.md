@@ -1,11 +1,10 @@
 # Idea
 
-The idea behind this project is to fingerprint CMS as well as other software components on a website
-by hashing files and comparing them with hashes from specific releases.
+The idea behind this project is to fingerprint the version of a CMS.
 
-Depending on the website this process may be as quick as requesting a single file.
+This is done by requesting specific files, hashing them and comparing them to hashes from known releases. Depending on the website this process may be as quick as requesting a single file. This version can then be used for identifying known vulnerabilities (CVE).
 
-The tool can be used for pentesting purposes. Mere hiding of obvious version indicators is not enough to be safe.
+The purpose of this tool is usage in pentesting.
 
 # Usage
 
