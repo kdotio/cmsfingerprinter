@@ -1,13 +1,15 @@
 # Idea
 
 The idea behind this project is to fingerprint CMS as well as other software components on a website
-by hashing files and comparing them with hashes for specific releases.
+by hashing files and comparing them with hashes from specific releases.
 
 Depending on the website this process may be as quick as requesting a single file.
 
-The tool can be used for pentesting purposes to show that mere hiding of obvious version indicators, security by obscurity, is not enough to be safe.
+The tool can be used for pentesting purposes. Mere hiding of obvious version indicators is not enough to be safe.
 
 # Usage
+
+As of now, the user must have basic knowledge which specific CMS is used. There are various other tools available that do this just fine.
 
 ```
 go run . -target https://example.com -cms wordpress
@@ -15,19 +17,23 @@ go run . -target https://example.com -cms wordpress
 -cms value must match filename in ./hashes dir
 ```
 
-As of now, the user must have basic knowledge which specific CMS is used.
+## Getting started
+```
+fp, _ := fingerprinter.NewFingerprinter(bytes)
 
-This tool is can be used for finding version information where this is not obvious,
-e.g. if no version is found in the `<meta name="generator" content="WordPress">` tag
+_, tags, _ := fp.Analyze(ctx, target)
 
-The tool can also be used to fingerprint the specific semantic version (`major.minor.patch`), if only a major version is easily visible.
+if len(tags) == 1 {
+    log.Println("SUCCESS. Found", tags[0])
+}
+```
 
 ## Filehashes
 
-The filehashes were generated using openly available GitHub repos as well as pre-packaged archives.
+The filehashes were generated using openly available repos as well as pre-packaged archives.
 
-When hashing files using repos, a list of the 50-100 most changed files across all revisions was created that was hashed for each revision.
-This greatly reduced the number of files to be hashed, but may lead to inconclusive results for some CMS or versions, as the overlap is too great.
+When hashing files using repos, a list of the 50-150 most changed files across all revisions was created that was hashed for each revision.
+This greatly reduced the number of files to be hashed. However, this may lead to inconclusive results for some CMS or versions, as the overlap is too great.
 
 If there is no public repo available, all files of each release had to be hashed for proper fingerprinting.
 
