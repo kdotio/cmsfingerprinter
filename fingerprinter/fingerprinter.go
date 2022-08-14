@@ -29,9 +29,8 @@ type fingerprinter struct {
 	maxDepth         int
 }
 
-// NewFingerprinter returns a re-usable fingerprinter for a specific CMS.
-// Is currently NOT THREAD-SAFE
-func NewFingerprinter(rawHashes []byte) (*fingerprinter, error) {
+// New returns a re-usable fingerprinter for a specific CMS.
+func New(rawHashes []byte) (*fingerprinter, error) {
 	parser := hashparser.New()
 	parser.PreferFilesInRoot = true
 	parser.ExcludedFileMatcher = []string{"wp-admin", "/config/", "wp-content/themes"} // WordPress

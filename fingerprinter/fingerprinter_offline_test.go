@@ -44,7 +44,7 @@ func TestOffline(t *testing.T) {
 				log.Fatal(err)
 			}
 
-			f, err := NewFingerprinter(bytes)
+			f, err := New(bytes)
 			if err != nil {
 				t.Fatal(err)
 			}

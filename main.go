@@ -36,7 +36,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	f, err := fingerprinter.NewFingerprinter(bytes)
+	fp, err := fingerprinter.New(bytes)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	_, tags, err := f.Analyze(ctx, *target)
+	_, tags, err := fp.Analyze(ctx, *target)
 	if err != nil {
 		log.Fatal(err)
 	}
