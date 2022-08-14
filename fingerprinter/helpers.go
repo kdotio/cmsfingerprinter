@@ -26,10 +26,10 @@ func isImage(file string) bool {
 	return false
 }
 
-type httpHashRequester func(ctx context.Context, target, file string) (md5sum string, sCode int, err error)
+type httpHashRequester func(ctx context.Context, target string) (md5sum string, sCode int, err error)
 
 func defaultHttpHasher(client *http.Client) httpHashRequester {
-	return func(ctx context.Context, target, file string) (md5sum string, sCode int, err error) {
+	return func(ctx context.Context, target string) (md5sum string, sCode int, err error) {
 		body, sCode, err := httpRequest(ctx, client, target)
 		if err != nil {
 			return "", 0, err
@@ -49,7 +49,7 @@ func defaultHttpHasher(client *http.Client) httpHashRequester {
 		// }
 
 		// skip trimming all \r in body, if mimetype is of image: jpg, png, gif
-		if !isImage(file) {
+		if !isImage(target) {
 			// fmt.Println(`removing \r in non-image:`, file)
 			body = strings.ReplaceAll(body, "\r", "") // trim DOS added chars
 		}

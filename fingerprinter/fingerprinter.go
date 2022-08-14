@@ -100,11 +100,11 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 	return eval.Iterations(), possibleVersions, fmt.Errorf("too many possible versions (%d): %s", len(possibleVersions), possibleVersions)
 }
 
-func (f *fingerprinter) getVersions(ctx context.Context, target, file string) (tags []string, sCode int, err error) {
-	t := fmt.Sprintf("%s/%s", strings.TrimSuffix(target, "/"), file)
+func (f *fingerprinter) getVersions(ctx context.Context, baseTarget, file string) (tags []string, sCode int, err error) {
+	t := fmt.Sprintf("%s/%s", strings.TrimSuffix(baseTarget, "/"), file)
 	log.Println("---------")
 
-	h, sCode, err := f.requestHash(ctx, t, file)
+	h, sCode, err := f.requestHash(ctx, t)
 	if err != nil || sCode != 200 {
 		return []string{}, sCode, err
 	}
