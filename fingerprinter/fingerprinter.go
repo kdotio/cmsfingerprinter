@@ -96,8 +96,7 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string, depth int) (
 		time.Sleep(f.httpRequestDelay)
 	}
 
-	possibleVersions := eval.PossibleVersions()
-	return eval.Iterations(), possibleVersions, fmt.Errorf("too many possible versions (%d): %s", len(possibleVersions), possibleVersions)
+	return eval.Iterations(), eval.PossibleVersions(), nil
 }
 
 func (f *fingerprinter) getVersions(ctx context.Context, baseTarget, file string) (tags []string, sCode int, err error) {

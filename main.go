@@ -51,5 +51,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Println("SUCCESS. Found", tags)
+	if len(tags) != 1 {
+		log.Fatalf("too many possible versions (%d): %s", len(tags), tags)
+	}
+
+	log.Println("SUCCESS. Found", tags[0])
 }
