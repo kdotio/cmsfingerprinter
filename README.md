@@ -11,9 +11,24 @@ The purpose of this tool is usage in pentesting.
 As of now, the user must have basic knowledge which specific CMS is used. There are various other tools available that do this just fine.
 
 ```
-go run . -target https://example.com -cms wordpress
-
+go run . -target <target> -cms <cms>
 -cms value must match filename in ./hashes dir
+```
+
+```
+go run . -target https://example.local -cms wordpress
+
+Succesfully parsed hashes.
+Analyzing https://example.local
+---------
+(200) https://example.local/readme.html [5f5f739bee08d0ac236d3409a40e4e37]
+Found tags: [6.0.1 6.0]
+Currently (2) possible versions: [6.0.1 6.0]
+---------
+(200) https://example.local/wp-includes/js/dist/block-library.js [0d152aadaba02d719774d459bb50563d]
+Found tags: [6.0.1]
+Currently (1) possible versions: [6.0.1]
+SUCCESS. Found 6.0.1
 ```
 
 ## Getting started
