@@ -29,15 +29,28 @@ type fingerprinter struct {
 	maxDepth         int
 }
 
-// New returns a re-usable fingerprinter for a specific CMS.
-func New(rawHashes []byte) (*fingerprinter, error) {
-	parser := hashparser.New()
-	parser.PreferFilesInRoot = true
-	parser.ExcludedFileMatcher = []string{"wp-admin", "/config/", "wp-content/themes"} // WordPress
+type Options struct {
+	PreferFilesInRoot   bool
+	ExcludedFileMatcher []string
+	IncludeOnlyMatcher  []string
+}
 
-	// parser.IncludeOnlyMatcher =  []string{"/assets/", "/lib/"} // Umbraco
-	// parser.IncludeOnlyMatcher =  []string{".xlf"} // Wordpress
-	// parser.IncludeOnlyMatcher =  []string{"assets/contao"} // Contao accessibility
+func defaultOpts() Options {
+	return Options{
+		PreferFilesInRoot:   true,
+		ExcludedFileMatcher: []string{"wp-admin", "/config/", "wp-content/themes"}, // WordPress
+
+		// parser.IncludeOnlyMatcher =  []string{"/assets/", "/lib/"} // Umbraco
+		// parser.IncludeOnlyMatcher =  []string{".xlf"} // Wordpress
+		// parser.IncludeOnlyMatcher =  []string{"assets/contao"} // Contao accessibility
+	}
+}
+
+func NewOptions(rawHashes []byte, opts Options) (*fingerprinter, error) {
+	parser := hashparser.New()
+	parser.PreferFilesInRoot = opts.PreferFilesInRoot
+	parser.ExcludedFileMatcher = opts.ExcludedFileMatcher
+	parser.IncludeOnlyMatcher = opts.IncludeOnlyMatcher
 
 	err := parser.Parse(rawHashes)
 	if err != nil {
@@ -55,6 +68,11 @@ func New(rawHashes []byte) (*fingerprinter, error) {
 	}
 
 	return fp, nil
+}
+
+// New returns a re-usable fingerprinter for a specific CMS.
+func New(rawHashes []byte) (*fingerprinter, error) {
+	return NewOptions(rawHashes, defaultOpts())
 }
 
 func (f *fingerprinter) Analyze(ctx context.Context, target string) (httpRequests int, revs []string, err error) {
