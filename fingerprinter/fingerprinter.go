@@ -91,7 +91,7 @@ func New(rawHashes []byte) (*fingerprinter, error) {
 	return NewOptions(rawHashes, defaultOpts())
 }
 
-func (f *fingerprinter) Analyze(ctx context.Context, target string) (httpRequests int, revs []string, err error) {
+func (f *fingerprinter) Analyze(ctx context.Context, target string) (revs []string, err error) {
 	f.mutex.RLock()
 	defer f.mutex.RUnlock()
 
@@ -102,7 +102,7 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string) (httpRequest
 
 	next, err := f.hashes.GetFile(0)
 	if err != nil {
-		return 0, []string{}, errors.New("missing zero index")
+		return []string{}, errors.New("missing zero index")
 	}
 
 	// TODO: what to use as first file call?? ideally something that splits versions 50/50 - or contains latest version, as is most likely..
@@ -113,13 +113,13 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string) (httpRequest
 
 	eval, err := evaluator.New(f.maxDepth, f.hashes, f.getVersions)
 	if err != nil {
-		return 0, []string{}, err
+		return []string{}, err
 	}
 	eval.SetLogger(f.traceLogger, f.errLogger)
 
 	for file := range queue {
 		if helpers.IsDone((ctx.Done())) {
-			return eval.Iterations(), []string{}, errors.New("context canceled")
+			return []string{}, errors.New("context canceled")
 		}
 
 		nextRequest, err := eval.Analyze(ctx, target, file)
@@ -128,14 +128,14 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string) (httpRequest
 			// return partial results if requests run into depth limit
 			// vulnerabilities may still be identified, even if 2-3 versions left
 			if errors.Is(err, evaluator.ErrDepthReached) {
-				return eval.Iterations(), eval.PossibleVersions(), err
+				return eval.PossibleVersions(), err
 			}
 
-			return eval.Iterations(), []string{}, err
+			return []string{}, err
 		}
 
 		if match, err := eval.SingleMatch(); err == nil {
-			return eval.Iterations(), []string{match}, nil
+			return []string{match}, nil
 		}
 
 		if nextRequest == "" {
@@ -147,7 +147,7 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string) (httpRequest
 		time.Sleep(f.httpRequestDelay)
 	}
 
-	return eval.Iterations(), eval.PossibleVersions(), nil
+	return eval.PossibleVersions(), nil
 }
 
 func (f *fingerprinter) SetRequestDelay(duration time.Duration) {

@@ -33,9 +33,9 @@ SUCCESS. Found 6.0.1
 
 ## Getting started
 ```
-fp, _ := fingerprinter.NewFingerprinter(bytes)
+fp, _ := fingerprinter.New(bytes)
 
-_, tags, _ := fp.Analyze(ctx, target)
+tags, _ := fp.Analyze(ctx, target)
 
 if len(tags) == 1 {
     log.Println("SUCCESS. Found", tags[0])

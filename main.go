@@ -48,7 +48,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	_, tags, err := fp.Analyze(ctx, *target)
+	tags, err := fp.Analyze(ctx, *target)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -57,16 +57,16 @@ func TestOffline(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 
-			_, tag, err := f.Analyze(ctx, testcase)
+			tags, err := f.Analyze(ctx, testcase)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			if !helpers.AreEqual(tc.testdata.expectedTags, tag) {
-				t.Fatalf("expected %s, got %s", tc.testdata.expectedTags, tag)
+			if !helpers.AreEqual(tc.testdata.expectedTags, tags) {
+				t.Fatalf("expected %s, got %s", tc.testdata.expectedTags, tags)
 			}
 
-			t.Log("Final tag:", tag)
+			t.Log("Final tag:", tags)
 		})
 	}
 }
