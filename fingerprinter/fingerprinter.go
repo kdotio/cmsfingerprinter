@@ -88,7 +88,6 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string) (httpRequest
 	defer f.mutex.RUnlock()
 
 	target = strings.TrimSuffix(target, "/")
-	f.traceLogger.Println("Analyzing", target)
 
 	// TODO: run optional faulty redirect check
 	// if target returns faulty 200 status code for any URI, evaluation may run til timeout needlessly
