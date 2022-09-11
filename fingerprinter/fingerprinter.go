@@ -33,17 +33,25 @@ type fingerprinter struct {
 }
 
 type Options struct {
-	PreferFilesInRoot   bool
+	// PreferFilesInRoot will prefer files in root dir
+	// for initial requesting when no tags have been identified yet
+	// as these are most likely not to be blocked
+	PreferFilesInRoot bool
+
+	// ExcludedFileMatcher will exclude all files containing any of the strings
+	// must NOT have a leading slash for root dir
 	ExcludedFileMatcher []string
 	IncludeOnlyMatcher  []string
 }
 
 func defaultOpts() Options {
 	return Options{
-		PreferFilesInRoot:   true,
-		ExcludedFileMatcher: []string{"wp-admin", "/config/", "wp-content/themes"}, // WordPress
+		ExcludedFileMatcher: []string{
+			"wp-admin", "config/", "wp-content/themes", // WordPress
+			// "admin/", // OpenCart
+		},
 
-		// parser.IncludeOnlyMatcher =  []string{"/assets/", "/lib/"} // Umbraco
+		// parser.IncludeOnlyMatcher =  []string{"assets/", "lib/"} // Umbraco
 		// parser.IncludeOnlyMatcher =  []string{".xlf"} // Wordpress
 		// parser.IncludeOnlyMatcher =  []string{"assets/contao"} // Contao accessibility
 	}

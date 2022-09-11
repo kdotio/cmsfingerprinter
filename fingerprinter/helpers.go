@@ -48,8 +48,8 @@ func defaultHttpHasher(client *http.Client) httpHashRequester {
 
 		// skip trimming all \r in body, if mimetype is of image: jpg, png, gif
 		if !isImage(target) {
-			// fmt.Println(`removing \r in non-image:`, file)
-			body = strings.ReplaceAll(body, "\r", "") // trim DOS added chars
+			// convert to UNIX style, as some admins may convert files to DOS style during upload
+			body = strings.ReplaceAll(body, "\r", "")
 		}
 
 		// if strings.Contains(body, "\r") {
