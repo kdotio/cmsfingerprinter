@@ -54,6 +54,8 @@ func New(depth int, hashes hashAccesser, versionGet versionGetter) (*Evaluation,
 	}, nil
 }
 
+var ErrDepthReached = errors.New("max depth reached")
+
 func (e *Evaluation) Analyze(ctx context.Context, target, file string) (nextRequest string, err error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
@@ -63,7 +65,7 @@ func (e *Evaluation) Analyze(ctx context.Context, target, file string) (nextRequ
 	}
 
 	if e.maxDepth > 0 && e.iterations+1 > e.maxDepth {
-		return "", fmt.Errorf("depth reached (%d)", e.maxDepth)
+		return "", ErrDepthReached
 	}
 
 	e.iterations++

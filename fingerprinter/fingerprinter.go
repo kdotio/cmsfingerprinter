@@ -117,6 +117,13 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string) (httpRequest
 
 		nextRequest, err := eval.Analyze(ctx, target, file)
 		if err != nil {
+
+			// return partial results if requests run into depth limit
+			// vulnerabilities may still be identified, even if 2-3 versions left
+			if errors.Is(err, evaluator.ErrDepthReached) {
+				return eval.Iterations(), eval.PossibleVersions(), err
+			}
+
 			return eval.Iterations(), []string{}, err
 		}
 
