@@ -50,7 +50,7 @@ func TestOffline(t *testing.T) {
 			}
 
 			// override http requester+hasher for test purposes
-			f.requestHash = testHttpRequester(testcase, tc.testdata.offlineHttp)
+			f.requestHash = testHttpRequester(t, testcase, tc.testdata.offlineHttp)
 
 			f.httpRequestDelay = 0
 
@@ -71,16 +71,16 @@ func TestOffline(t *testing.T) {
 	}
 }
 
-func testHttpRequester(mockTarget string, sCodes map[string]string) httpHashRequester {
+func testHttpRequester(t *testing.T, mockTarget string, sCodes map[string]string) httpHashRequester {
 	return func(_ context.Context, target string) (md5sum string, sCode int, err error) {
 		uri := strings.TrimPrefix(target, mockTarget)
 
 		if hash, ok := sCodes[uri]; ok {
-			log.Printf("(%d) %s\n", 200, target)
+			t.Logf("(%d) %s\n", 200, target)
 			return hash, 200, nil
 		}
 
-		log.Printf("(%d) %s\n", 404, target)
+		t.Logf("(%d) %s\n", 404, target)
 		return "", 404, nil
 	}
 }

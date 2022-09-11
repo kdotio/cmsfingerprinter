@@ -43,7 +43,10 @@ func TestParse(t *testing.T) {
 
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			got := parse(tc.input)
+			got, err := parse(tc.input)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			if len(tc.want) != len(got) {
 				t.Fatalf("len, expected %d, got %d", len(tc.want), len(got))

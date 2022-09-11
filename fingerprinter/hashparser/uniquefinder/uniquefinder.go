@@ -1,7 +1,7 @@
 package uniquefinder
 
 import (
-	"log"
+	"fmt"
 
 	"cmsfingerprinter/helpers"
 	"cmsfingerprinter/structs"
@@ -20,7 +20,7 @@ type UniqueFinder struct {
 
 // most unique file is defined as
 // a file most likely to prove or disprove one or multiple tags from a list
-func (u UniqueFinder) GetMostUniqueFile(tags []string, priorFiles []string) string {
+func (u UniqueFinder) GetMostUniqueFile(tags []string, priorFiles []string) (string, error) {
 
 	// TODO: later on, this should return a file that can split remaining tags 50/50
 	// depending on result. currently tags are decreased by at least +1
@@ -33,7 +33,7 @@ func (u UniqueFinder) GetMostUniqueFile(tags []string, priorFiles []string) stri
 		for _, unqe := range u.tagsUniqueFiles {
 			for _, u := range unqe {
 				if !helpers.Contains(priorFiles, u.file) {
-					return u.file
+					return u.file, nil
 				}
 			}
 		}
@@ -42,7 +42,7 @@ func (u UniqueFinder) GetMostUniqueFile(tags []string, priorFiles []string) stri
 	return u.getMostUniqueFile(tags, priorFiles)
 }
 
-func (u UniqueFinder) getMostUniqueFile(tags []string, priorFiles []string) string {
+func (u UniqueFinder) getMostUniqueFile(tags []string, priorFiles []string) (string, error) {
 	// keep one uniqueness entry per tag
 	uniques := map[string]uniqueness{}
 
@@ -51,8 +51,8 @@ tagloop:
 
 		unqe, ok := u.tagsUniqueFiles[tag]
 		if !ok {
-			log.Println("No entry for tag", tag)
-			continue
+			// error must've occured during initial parse
+			return "", fmt.Errorf("no uniqueness entry for tag: %s", tag)
 		}
 
 		// unqe MUST be pre-sorted with lowest uniqueness first
@@ -62,8 +62,7 @@ tagloop:
 			if !helpers.Contains(priorFiles, u.file) {
 
 				if _, ok := uniques[tag]; ok {
-					log.Println("ERROR: Tag exists already", tag)
-					continue tagloop
+					return "", fmt.Errorf("tag exists already: %s", tag)
 				}
 
 				uniques[tag] = u
@@ -72,14 +71,19 @@ tagloop:
 		}
 	}
 
-	return getMostUniqueAcross(uniques)
+	return getMostUniqueAcross(uniques), nil
 }
 
-func GetTagCounts(hashes map[string]structs.Filehash) UniqueFinder {
-	return UniqueFinder{tagsUniqueFiles: parse(hashes)}
+func GetTagCounts(hashes map[string]structs.Filehash) (UniqueFinder, error) {
+	parsed, err := parse(hashes)
+	if err != nil {
+		return UniqueFinder{}, err
+	}
+
+	return UniqueFinder{tagsUniqueFiles: parsed}, nil
 }
 
-func parse(hashes map[string]structs.Filehash) map[string][]uniqueness {
+func parse(hashes map[string]structs.Filehash) (map[string][]uniqueness, error) {
 	filecounts := map[string]map[string]int{}
 
 	for file, hashmap := range hashes {
@@ -96,7 +100,7 @@ func parse(hashes map[string]structs.Filehash) map[string][]uniqueness {
 			// for each of the tag inside, append the uniqueness factor
 			for _, tag := range tags {
 				if _, ok := count[tag]; ok {
-					log.Println("ERROR: Tag not unique:", tag, file)
+					return nil, fmt.Errorf("tag not unique: %s %s", tag, file)
 				}
 
 				count[tag] = length
@@ -104,7 +108,7 @@ func parse(hashes map[string]structs.Filehash) map[string][]uniqueness {
 		}
 
 		if _, ok := filecounts[file]; ok {
-			log.Println("ERROR: File not unique:", file)
+			return nil, fmt.Errorf("file not unique: %s", file)
 		}
 
 		filecounts[file] = count
@@ -132,5 +136,5 @@ func parse(hashes map[string]structs.Filehash) map[string][]uniqueness {
 		tcounts[tag] = sortByUniqueness(tcounts[tag])
 	}
 
-	return tcounts
+	return tcounts, nil
 }

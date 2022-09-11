@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"sync"
 
 	"cmsfingerprinter/helpers"
 )
@@ -14,13 +16,15 @@ const maxNon200HTTP = 20
 
 type hashAccesser interface {
 	GetFile(index int) (string, error)
-	GetMostUniqueFile(tags []string, priorFiles []string) string
-	GuessNextRequest(ctx context.Context, possibleVersions []string, requestedFiles []string) (nextRequest string, requested []string)
+	GetMostUniqueFile(tags []string, priorFiles []string) (string, error)
+	GuessNextRequest(ctx context.Context, possibleVersions []string, requestedFiles []string) (nextRequest string, requested []string, err error)
 }
 
 type versionGetter func(ctx context.Context, target, file string) (tags []string, sCode int, err error)
 
 type Evaluation struct {
+	mutex sync.RWMutex
+
 	maxDepth   int
 	iterations int
 
@@ -30,6 +34,9 @@ type Evaluation struct {
 	possibleVersions []string
 	requestedFiles   []string
 	httpNon200       int
+
+	traceLogger *log.Logger
+	errLogger   *log.Logger
 }
 
 func New(depth int, hashes hashAccesser, versionGet versionGetter) (*Evaluation, error) {
@@ -41,10 +48,16 @@ func New(depth int, hashes hashAccesser, versionGet versionGetter) (*Evaluation,
 		maxDepth:   depth,
 		hashes:     hashes,
 		getVersion: versionGet,
+
+		traceLogger: log.New(io.Discard, "", 0),
+		errLogger:   log.New(io.Discard, "", 0),
 	}, nil
 }
 
 func (e *Evaluation) Analyze(ctx context.Context, target, file string) (nextRequest string, err error) {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
 	if e.httpNon200 > maxNon200HTTP {
 		return "", fmt.Errorf("max non-200 http exceeded (%d)", maxNon200HTTP)
 	}
@@ -63,7 +76,7 @@ func (e *Evaluation) Analyze(ctx context.Context, target, file string) (nextRequ
 		return e.nextRequestOnSuccess(ctx, sCode, tags)
 	}
 
-	log.Println(err)
+	e.errLogger.Println(err)
 
 	if helpers.IsHostUnavailable(err) {
 		return "", fmt.Errorf("target unreachable: %s", err)
@@ -73,7 +86,11 @@ func (e *Evaluation) Analyze(ctx context.Context, target, file string) (nextRequ
 		return e.nextRequestOnZeroKnownVersions()
 	}
 
-	next := e.hashes.GetMostUniqueFile(e.possibleVersions, e.requestedFiles)
+	next, err := e.hashes.GetMostUniqueFile(e.possibleVersions, e.requestedFiles)
+	if err != nil {
+		return "", fmt.Errorf("get most unique file: %w", err)
+	}
+
 	return next, nil
 }
 
@@ -96,12 +113,16 @@ func (e *Evaluation) nextRequestOnSuccess(ctx context.Context, sCode int, tags [
 			return e.nextRequestOnZeroKnownVersions()
 		}
 
-		var next string
-		next, e.requestedFiles = e.hashes.GuessNextRequest(ctx, e.possibleVersions, e.requestedFiles)
+		next, requested, err := e.hashes.GuessNextRequest(ctx, e.possibleVersions, e.requestedFiles)
+		if err != nil {
+			return "", fmt.Errorf("guess next request: %w", err)
+		}
+
+		e.requestedFiles = requested
 		return next, nil
 	}
 
-	log.Println("Found tags:", tags)
+	e.traceLogger.Println("Found tags:", tags)
 
 	previousPossibleVersions := e.possibleVersions
 	if len(e.possibleVersions) == 0 {
@@ -111,7 +132,7 @@ func (e *Evaluation) nextRequestOnSuccess(ctx context.Context, sCode int, tags [
 		e.possibleVersions = helpers.Intersect(e.possibleVersions, tags)
 	}
 
-	log.Printf("Currently (%d) possible versions: %s\n", len(e.possibleVersions), e.possibleVersions)
+	e.traceLogger.Printf("Currently (%d) possible versions: %s\n", len(e.possibleVersions), e.possibleVersions)
 
 	// this may happen if e.g. a file returns tags:[5.4.2]
 	// and previous possible versions is [5.7 5.6.2 5.6.1 5.6 5.5.3 5.5.2 5.5.1 5.5]
@@ -125,16 +146,26 @@ func (e *Evaluation) nextRequestOnSuccess(ctx context.Context, sCode int, tags [
 		return "", nil
 	}
 
-	var next string
-	next, e.requestedFiles = e.hashes.GuessNextRequest(ctx, e.possibleVersions, e.requestedFiles)
+	next, requested, err := e.hashes.GuessNextRequest(ctx, e.possibleVersions, e.requestedFiles)
+	if err != nil {
+		return "", fmt.Errorf("guess next request: %w", err)
+	}
+
+	e.requestedFiles = requested
 	return next, nil
 }
 
 func (e *Evaluation) Iterations() int {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+
 	return e.iterations
 }
 
 func (e *Evaluation) SingleMatch() (string, error) {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+
 	if len(e.possibleVersions) == 1 {
 		return e.possibleVersions[0], nil
 	}
@@ -143,6 +174,26 @@ func (e *Evaluation) SingleMatch() (string, error) {
 }
 
 func (e *Evaluation) PossibleVersions() []string {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+
 	// always return sorted for easy readability in output
 	return helpers.SortRevsAlphabeticallyDesc(e.possibleVersions)
+}
+
+func (e *Evaluation) SetLogger(traceLogger, errLogger *log.Logger) {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
+	e.traceLogger = traceLogger
+	e.errLogger = errLogger
+
+	// always discard logs if silent to avoid nil checks on call
+	if e.traceLogger == nil {
+		e.traceLogger = log.New(io.Discard, "", 0)
+	}
+
+	if e.errLogger == nil {
+		e.errLogger = log.New(io.Discard, "", 0)
+	}
 }

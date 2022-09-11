@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 
 	"cmsfingerprinter/fingerprinter/hashparser/hashlookup"
 	"cmsfingerprinter/fingerprinter/hashparser/uniquefinder"
@@ -51,9 +50,18 @@ func (h *HashParser) Parse(rawHashes []byte) error {
 		return errors.New("zero hashes available")
 	}
 
+	h.hlookup, err = hashlookup.New(hashes)
+	if err != nil {
+		return fmt.Errorf("hash lookup: %w", err)
+	}
+
+	uniques, err := uniquefinder.GetTagCounts(hashes)
+	if err != nil {
+		return fmt.Errorf("get tag counts: %w", err)
+	}
+	h.uniques = uniques
+
 	h.hashes = hashes
-	h.uniques = uniquefinder.GetTagCounts(hashes)
-	h.hlookup = hashlookup.New(hashes)
 	h.files = sortFilesByAccessLikelyhood(hashes, h.PreferFilesInRoot) // TODO: initial sort should prefer files that are part of the latest release
 
 	// TODO: generate list of unique files for EACH tag
@@ -70,7 +78,7 @@ func (h *HashParser) GetFile(index int) (string, error) {
 	return "", fmt.Errorf("unknown index: %d", index)
 }
 
-func (h *HashParser) GetMostUniqueFile(tags []string, priorFiles []string) string {
+func (h *HashParser) GetMostUniqueFile(tags []string, priorFiles []string) (string, error) {
 	return h.uniques.GetMostUniqueFile(tags, priorFiles)
 }
 
@@ -92,13 +100,22 @@ func (h *HashParser) GetTags(file, hash string) ([]string, error) {
 	return tags, nil
 }
 
-func (h *HashParser) GuessNextRequest(ctx context.Context, possibleVersions []string, requestedFiles []string) (nextRequest string, requested []string) {
+func (h *HashParser) GuessNextRequest(ctx context.Context, possibleVersions []string, requestedFiles []string) (nextRequest string, requested []string, err error) {
 	for {
 		if helpers.IsDone((ctx.Done())) {
-			return "", []string{}
+			return "", nil, errors.New("context canceled")
 		}
 
-		nextRequest = h.uniques.GetMostUniqueFile(possibleVersions, requestedFiles)
+		// final version already found
+		if len(possibleVersions) == 1 {
+			return "", requestedFiles, nil
+		}
+
+		nextRequest, err = h.uniques.GetMostUniqueFile(possibleVersions, requestedFiles)
+		if err != nil {
+			return "", nil, fmt.Errorf("get most unique file: %w", err)
+		}
+
 		if nextRequest == "" {
 			break
 		}
@@ -106,7 +123,7 @@ func (h *HashParser) GuessNextRequest(ctx context.Context, possibleVersions []st
 		// skip running file get, if no versions can be truncated by running the hash
 		allFilesShareHash, err := h.hlookup.DoTagsShareHash(nextRequest, possibleVersions)
 		if err != nil {
-			log.Println("ERROR:", err)
+			return "", nil, err
 		}
 
 		// if running the file, one or more tags can be eliminated, run it
@@ -120,5 +137,5 @@ func (h *HashParser) GuessNextRequest(ctx context.Context, possibleVersions []st
 		requestedFiles = helpers.AppendIfMissing(requestedFiles, nextRequest)
 	}
 
-	return nextRequest, requestedFiles
+	return nextRequest, requestedFiles, nil
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -27,6 +28,8 @@ type fingerprinter struct {
 	requestHash      httpHashRequester
 	httpRequestDelay time.Duration
 	maxDepth         int
+	traceLogger      *log.Logger
+	errLogger        *log.Logger
 }
 
 type Options struct {
@@ -65,6 +68,11 @@ func NewOptions(rawHashes []byte, opts Options) (*fingerprinter, error) {
 		}),
 		httpRequestDelay: defaultRequestDelay,
 		maxDepth:         defaultMaxDepth,
+
+		// by default, use a discard logger
+		// avoids nil check on every log
+		traceLogger: log.New(io.Discard, "", 0),
+		errLogger:   log.New(io.Discard, "", 0),
 	}
 
 	return fp, nil
@@ -80,7 +88,7 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string) (httpRequest
 	defer f.mutex.RUnlock()
 
 	target = strings.TrimSuffix(target, "/")
-	log.Println("Analyzing", target)
+	f.traceLogger.Println("Analyzing", target)
 
 	// TODO: run optional faulty redirect check
 	// if target returns faulty 200 status code for any URI, evaluation may run til timeout needlessly
@@ -100,6 +108,7 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string) (httpRequest
 	if err != nil {
 		return 0, []string{}, err
 	}
+	eval.SetLogger(f.traceLogger, f.errLogger)
 
 	for file := range queue {
 		if helpers.IsDone((ctx.Done())) {
@@ -116,7 +125,7 @@ func (f *fingerprinter) Analyze(ctx context.Context, target string) (httpRequest
 		}
 
 		if nextRequest == "" {
-			log.Println("ERROR: no more files to request")
+			f.errLogger.Println("no more files to request")
 			break
 		}
 
@@ -160,16 +169,38 @@ func (f *fingerprinter) SetRequester(requester httpHashRequester) error {
 	return nil
 }
 
-func (f *fingerprinter) getVersions(ctx context.Context, target, file string) (tags []string, sCode int, err error) {
-	t := fmt.Sprintf("%s/%s", strings.TrimSuffix(target, "/"), file)
-	log.Println("---------")
+func (f *fingerprinter) SetLogger(traceLogger, errLogger *log.Logger) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
 
-	h, sCode, err := f.requestHash(ctx, t)
+	f.traceLogger = traceLogger
+	f.errLogger = errLogger
+
+	// always discard logs if silent to avoid nil checks on call
+	if f.traceLogger == nil {
+		f.traceLogger = log.New(io.Discard, "", 0)
+	}
+
+	if f.errLogger == nil {
+		f.errLogger = log.New(io.Discard, "", 0)
+	}
+}
+
+func (f *fingerprinter) getVersions(ctx context.Context, target, file string) (tags []string, sCode int, err error) {
+	target = fmt.Sprintf("%s/%s", strings.TrimSuffix(target, "/"), file)
+
+	hash, sCode, err := f.requestHash(ctx, target)
 	if err != nil || sCode != 200 {
+		if err == nil {
+			f.traceLogger.Printf("(%d) %s\n", sCode, target)
+		}
+
 		return []string{}, sCode, err
 	}
 
-	tags, err = f.hashes.GetTags(file, h)
+	f.traceLogger.Printf("(%d) %s [%s]\n", sCode, target, hash)
+
+	tags, err = f.hashes.GetTags(file, hash)
 	if err != nil {
 		return []string{}, 200, err
 	}

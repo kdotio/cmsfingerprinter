@@ -5,7 +5,6 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -36,7 +35,6 @@ func defaultHttpHasher(client *http.Client) httpHashRequester {
 		}
 
 		if sCode != 200 {
-			log.Printf("(%d) %s\n", sCode, target)
 			return "", sCode, nil
 		}
 
@@ -54,19 +52,17 @@ func defaultHttpHasher(client *http.Client) httpHashRequester {
 			body = strings.ReplaceAll(body, "\r", "") // trim DOS added chars
 		}
 
-		if strings.Contains(body, "\r") {
-			fmt.Println(`Has \r in document`)
-		}
+		// if strings.Contains(body, "\r") {
+		// 	fmt.Println(`Has \r in document`)
+		// }
 
 		// if strings.HasSuffix(body, "\n") {
 		//	fmt.Println(`Has \n at body end`)
 		//}
 		//body = strings.TrimSuffix(body, "\n") // sometimes \r\n is added to file end, without trim no match can be made
 
-		h := md5hash(body)
-		log.Printf("(%d) %s [%s]\n", sCode, target, h)
-
-		return h, 200, nil
+		hash := md5hash(body)
+		return hash, 200, nil
 	}
 }
 

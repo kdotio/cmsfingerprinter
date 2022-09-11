@@ -41,7 +41,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Println("Succesfully parsed hashes.")
+	infoLog := log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	errorLog := log.New(os.Stdout, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+	fp.SetLogger(infoLog, errorLog)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

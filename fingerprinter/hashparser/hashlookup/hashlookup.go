@@ -2,7 +2,6 @@ package hashlookup
 
 import (
 	"fmt"
-	"log"
 
 	"cmsfingerprinter/structs"
 )
@@ -18,7 +17,7 @@ type HashLookup struct {
 // into
 // map[file]map[rev]hash
 // allowing quick lookup of hash for specific file in specific revision.
-func New(hashes map[string]structs.Filehash) HashLookup {
+func New(hashes map[string]structs.Filehash) (HashLookup, error) {
 	filemap := map[string]filetags{}
 
 	for file, hashmap := range hashes {
@@ -33,7 +32,7 @@ func New(hashes map[string]structs.Filehash) HashLookup {
 			for _, tag := range tags {
 				// per tag, add hash as entry to map
 				if _, ok := ftag[tag]; ok {
-					log.Println("ERROR: entry already exists for tag:", tag, hash, file)
+					return HashLookup{}, fmt.Errorf("duplicate entry exists for tag: %s %s %s", tag, hash, file)
 				}
 
 				ftag[tag] = hash
@@ -43,18 +42,21 @@ func New(hashes map[string]structs.Filehash) HashLookup {
 		filemap[file] = ftag
 	}
 
-	return HashLookup{filesTagsHashes: filemap}
+	return HashLookup{filesTagsHashes: filemap}, nil
 }
 
 func (h *HashLookup) DoTagsShareHash(file string, tags []string) (bool, error) {
 	if len(tags) == 1 {
-		log.Println("only one tag left:", tags[0])
 		return false, nil
 	}
 
 	filehashes, ok := h.filesTagsHashes[file]
 	if !ok {
-		return false, fmt.Errorf("ERROR: no entry for file: %s", file)
+		// this means a file was requested
+		// for which no hashes exists
+		// either http request guesser uses different hashes
+		// or initial hash parse went wrong (unlikely)
+		return false, fmt.Errorf("no entry for file: %s", file)
 	}
 
 	//		"readme.html": {
@@ -69,7 +71,6 @@ func (h *HashLookup) DoTagsShareHash(file string, tags []string) (bool, error) {
 		if !ok {
 
 			// this means the file does not exist in the specified revision
-			// log.Println("ERROR: no hash for tag", tag, file)
 			continue
 		}
 
