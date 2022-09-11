@@ -58,7 +58,7 @@ whereas non-readable files, e.g. `.php` were changed.
 * BoltCMS `0.8.4 - 3.7.4.1`
 * Concrete CMS `5.7 - 9.0.1`
 * Contao `3.2.12 - 4.5.10`
-* Drupal `1.0 - 9.2.8`
+* Drupal `1.0 - 9.4.5`
 * GravCMS `0.1 - 1.7.25`
 * Joomla! `1.7.3 - 4.1.5`
 * Laravel `3.2 - 8.6.7` // rather wide-ranging
