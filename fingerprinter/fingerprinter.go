@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -68,11 +69,28 @@ func NewOptions(rawHashes []byte, opts Options) (*fingerprinter, error) {
 		return nil, fmt.Errorf("parse: %s", err)
 	}
 
+	dialer := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+
 	fp := &fingerprinter{
 		hashes: parser,
 		requestHash: defaultHttpHasher(&http.Client{
-			Timeout:   5 * time.Second,
-			Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}, // allow invalid certs for pentesting purposes
+			Timeout: 5 * time.Second,
+			Transport: &http.Transport{
+				Proxy:                 http.ProxyFromEnvironment,
+				DialContext:           dialer.DialContext,
+				ForceAttemptHTTP2:     true,
+				MaxIdleConns:          100,
+				MaxIdleConnsPerHost:   http.DefaultMaxIdleConnsPerHost,
+				IdleConnTimeout:       90 * time.Second, // ensure idle conns are eventually terminated
+				TLSHandshakeTimeout:   10 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+
+				// allow invalid certs for pentesting purposes
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
 		}),
 		httpRequestDelay: defaultRequestDelay,
 		maxDepth:         defaultMaxDepth,
